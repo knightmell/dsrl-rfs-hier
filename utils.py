@@ -5,6 +5,31 @@ from stable_baselines3.common.callbacks import BaseCallback
 import hydra
 
 
+HIERARCHICAL_RFS_LOG_KEYS = (
+	"train/ent_coef",
+	"train/ent_coef_loss",
+	"train/noise_actor_loss",
+	"train/residual_actor_loss",
+	"train/action_critic_loss",
+	"train/modulation_critic_loss",
+	"distill_mse/policy_samples",
+	"noise_scaled_l2",
+	"noise_decoder_input_l2",
+	"action_base_l2",
+	"residual_unit_mean_abs",
+	"residual_unit_l2",
+	"residual_tanh_saturation_fraction",
+	"action_residual_delta_l2",
+	"action_pre_clip_l2",
+	"action_exec_l2",
+	"residual_to_base_ratio",
+	"clip_fraction",
+	"effective_residual_l2",
+	"Q_action(action_exec)-Q_action(action_base)",
+	"Q_modulation(noise_scaled,residual_unit)-Q_modulation(noise_scaled,0)",
+)
+
+
 class DPPOBasePolicyWrapper:
 	def __init__(self, base_policy):
 		self.base_policy = base_policy
@@ -79,17 +104,28 @@ class LoggingCallback(BaseCallback):
 			if len(self.episode_rewards) > 0:
 				if self.use_wandb:
 					self.log_count += 1
-					wandb.log({
+					common_metrics = {
 						"train/ep_len_mean": np.mean(self.episode_lengths),
 						"train/success_rate": np.sum(self.episode_success) / np.sum(self.episode_completed),
 						"train/ep_rew_mean": np.mean(self.episode_rewards),
 						"train/rew_mean": np.mean(self.total_reward),
 						"train/timesteps": self.total_timesteps,
-						"train/ent_coef": self.locals['self'].logger.name_to_value['train/ent_coef'],
-						"train/actor_loss": self.locals['self'].logger.name_to_value['train/actor_loss'],
-						"train/critic_loss": self.locals['self'].logger.name_to_value['train/critic_loss'],
-						"train/ent_coef_loss": self.locals['self'].logger.name_to_value['train/ent_coef_loss'],
-					}, step=self.log_count)
+					}
+					logger_values = self.locals['self'].logger.name_to_value
+					if self.algorithm == 'dsrl_na_rfs_hier':
+						common_metrics.update({
+							key: logger_values[key]
+							for key in HIERARCHICAL_RFS_LOG_KEYS
+							if key in logger_values
+						})
+					else:
+						common_metrics.update({
+							"train/ent_coef": logger_values['train/ent_coef'],
+							"train/actor_loss": logger_values['train/actor_loss'],
+							"train/critic_loss": logger_values['train/critic_loss'],
+							"train/ent_coef_loss": logger_values['train/ent_coef_loss'],
+						})
+					wandb.log(common_metrics, step=self.log_count)
 					if np.sum(self.episode_completed) > 0:
 						wandb.log({
 							"train/success_rate": np.sum(self.episode_success) / np.sum(self.episode_completed),
@@ -124,7 +160,7 @@ class LoggingCallback(BaseCallback):
 					for _ in range(self.max_steps):
 						if self.algorithm == 'dsrl_sac':
 							action, _ = agent.predict(obs, deterministic=deterministic)
-						elif self.algorithm == 'dsrl_na':
+						elif self.algorithm in ['dsrl_na', 'dsrl_na_rfs_hier']:
 							action, _ = agent.predict_diffused(obs, deterministic=deterministic)
 						next_obs, reward, done, info = env.step(action)
 						obs = next_obs
@@ -170,7 +206,7 @@ def collect_rollouts(model, env, num_steps, base_policy, cfg):
 			noise[noise > cfg.train.action_magnitude] = cfg.train.action_magnitude
 		action = base_policy(torch.tensor(obs, device=cfg.device, dtype=torch.float32), noise)
 		next_obs, reward, done, info = env.step(action)
-		if cfg.algorithm == 'dsrl_na':
+		if cfg.algorithm in ['dsrl_na', 'dsrl_na_rfs_hier']:
 			action_store = action
 		elif cfg.algorithm == 'dsrl_sac':
 			action_store = noise.detach().cpu().numpy()

@@ -9,8 +9,9 @@ logdir: ${log_dir}/gym-dsrl/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
 base_policy_path: ./dppo/log/gym-pretrain/hopper-medium-v2_pre_diffusion_mlp_ta4_td20/2024-06-12_23-10-05/checkpoint/state_3000.pt
 normalization_path: ./dppo/log/gym/${env_name}/normalization.npz
 dppo_path: ./dppo
+rfs_hier_legacy_checkpoint_path: ./logs/gym-dsrl/gym_hopper_dsrl_2026-07-23_21-21-02_1/2026-07-23_21-21-02_1/checkpoint/ft_policy_7500000_steps.zip
 
-algorithm: dsrl_na # options are: dsrl_na, dsrl_sac
+algorithm: dsrl_na # options are: dsrl_na, dsrl_na_rfs_hier, dsrl_sac
 
 seed: 1
 device: cuda:0
@@ -28,6 +29,7 @@ eval_interval: 4000
 num_evals: 200
 save_model_interval: 10000
 save_replay_buffer: False
+total_timesteps: 20000000
 
 env:
   n_envs:  4
@@ -53,6 +55,7 @@ wandb:
   group: gym-hopper
 
 train:
+  buffer_size_na: 10000000
   tau: 0.005 # Target update rate
   actor_lr: 3e-4
   batch_size: 256
@@ -60,6 +63,13 @@ train:
   utd: 20 # Number of gradient steps to take per update
   noise_critic_grad_steps: 10 # Number of gradient steps to take per update when fitting noise critic 
   use_layer_norm: True
+  rfs_hier_residual_scale: 0.1
+  rfs_hier_residual_penalty_coef: 0.0
+  rfs_hier_residual_net_arch: [128, 128]
+  rfs_hier_residual_activation: silu
+  rfs_hier_residual_lr: 3e-4
+  rfs_hier_noise_actor_gradient_steps: 5
+  rfs_hier_residual_actor_gradient_steps: 5
   layer_size: 128 # Layer size for actor and critic
   num_layers: 3 # Number of layers for actor and critic
   discount: 0.99

@@ -13,7 +13,7 @@ import d4rl.gym_mujoco
 import sys
 sys.path.append('./dppo')
  
-from stable_baselines3 import SAC, DSRL
+from stable_baselines3 import SAC, DSRL, HierarchicalRFSDSRL
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
@@ -131,6 +131,51 @@ def main(cfg: OmegaConf):
 			noise_critic_grad_steps=cfg.train.noise_critic_grad_steps,
 			critic_backup_combine_type=cfg.train.critic_backup_combine_type,
 		)
+	elif cfg.algorithm == 'dsrl_na_rfs_hier':
+		exec_action_low = np.asarray(env.action_space.low, dtype=np.float32).reshape(-1)
+		exec_action_high = np.asarray(env.action_space.high, dtype=np.float32).reshape(-1)
+		model = HierarchicalRFSDSRL(
+			"MlpPolicy",
+			env,
+			learning_rate=cfg.train.actor_lr,
+			buffer_size=cfg.train.buffer_size_na,
+			learning_starts=1,
+			batch_size=cfg.train.batch_size,
+			tau=cfg.train.tau,
+			gamma=cfg.train.discount,
+			train_freq=cfg.train.train_freq,
+			gradient_steps=cfg.train.utd,
+			action_noise=None,
+			optimize_memory_usage=False,
+			ent_coef="auto" if cfg.train.ent_coef == -1 else cfg.train.ent_coef,
+			target_update_interval=1,
+			target_entropy="auto" if cfg.train.target_ent == -1 else cfg.train.target_ent,
+			use_sde=False,
+			sde_sample_freq=-1,
+			tensorboard_log=cfg.logdir,
+			verbose=1,
+			device=cfg.device,
+			policy_kwargs=policy_kwargs,
+			diffusion_policy=base_policy,
+			diffusion_act_dim=(cfg.act_steps, cfg.action_dim),
+			noise_critic_grad_steps=cfg.train.noise_critic_grad_steps,
+			critic_backup_combine_type=cfg.train.critic_backup_combine_type,
+			exec_action_low=exec_action_low,
+			exec_action_high=exec_action_high,
+			residual_scale=cfg.train.rfs_hier_residual_scale,
+			residual_penalty_coef=cfg.train.rfs_hier_residual_penalty_coef,
+			residual_net_arch=cfg.train.rfs_hier_residual_net_arch,
+			residual_activation=cfg.train.rfs_hier_residual_activation,
+			residual_lr=cfg.train.rfs_hier_residual_lr,
+			noise_actor_gradient_steps=cfg.train.rfs_hier_noise_actor_gradient_steps,
+			residual_actor_gradient_steps=cfg.train.rfs_hier_residual_actor_gradient_steps,
+		)
+		legacy_checkpoint_path = hydra.utils.to_absolute_path(
+			cfg.rfs_hier_legacy_checkpoint_path
+		)
+		model.initialize_from_legacy_checkpoint(legacy_checkpoint_path)
+	else:
+		raise ValueError(f"Unknown algorithm: {cfg.algorithm}")
 
 	checkpoint_callback = CheckpointCallback(
 		save_freq=cfg.save_model_interval, 
@@ -175,7 +220,7 @@ def main(cfg: OmegaConf):
 	callbacks = [checkpoint_callback, logging_callback]
 	# Train the agent
 	model.learn(
-		total_timesteps=20000000,
+		total_timesteps=cfg.total_timesteps,
 		callback = callbacks
 	)
 
