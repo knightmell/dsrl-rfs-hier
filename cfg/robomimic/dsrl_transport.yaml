@@ -28,6 +28,7 @@ eval_interval: 8000
 num_evals: 200
 save_model_interval: 10000
 save_replay_buffer: False
+total_timesteps: 20000000
 
 
 env:
