@@ -14,6 +14,7 @@ environment or starting training:
   --cfg job \
   algorithm=dsrl_na_rfs_hier \
   total_timesteps=5000000 \
+  env.n_envs=10 \
   seed=1
 ```
 
@@ -37,6 +38,7 @@ e75686d06f7297b870ee8d286fc36db6ecb6cb62e9c6a1783b9466b3f0691fb6
   --config-name dsrl_hopper \
   algorithm=dsrl_na_rfs_hier \
   total_timesteps=5000000 \
+  env.n_envs=10 \
   seed=1
 ```
 
