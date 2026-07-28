@@ -60,6 +60,7 @@ states.
   total_timesteps=5000000 \
   env.n_envs=10 \
   seed=1 \
+  use_wandb=false \
   name=phase6_hier_5m_seed1 \
   logdir=./logs/rfs_hier_v1/phase6_hier_5m_seed1 \
   hydra.run.dir=./logs/rfs_hier_v1/phase6_hier_5m_seed1
@@ -82,6 +83,7 @@ branch in `train_dsrl.py` remains unchanged:
   total_timesteps=5000000 \
   env.n_envs=10 \
   seed=1 \
+  use_wandb=false \
   name=phase6_dsrl_na_control_5m_seed1 \
   logdir=./logs/rfs_hier_v1/phase6_dsrl_na_control_5m_seed1 \
   hydra.run.dir=./logs/rfs_hier_v1/phase6_dsrl_na_control_5m_seed1
@@ -90,8 +92,8 @@ branch in `train_dsrl.py` remains unchanged:
 Both jobs use the same frozen DDIM5 decoder, 7.5M network checkpoint, seed,
 new-interaction count, evaluation seeds, initial evaluation protocol, and
 configured base-policy prefill. Both start with empty replay and freshly
-created optimizers. The comparison is therefore a matched network warm-start,
-not an exact resume.
+created optimizers. Both disable W&B and retain local TensorBoard logs. The
+comparison is therefore a matched network warm-start, not an exact resume.
 
 Do not start either 5M job until Phase 5 external review and the Phase 6
 CPU/smoke/migration/10k/100k gates pass.
