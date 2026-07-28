@@ -1,0 +1,38 @@
+{
+  "action_base_max": 0.7798222899436951,
+  "action_base_min": -0.7266501784324646,
+  "action_base_shape": [
+    1,
+    12
+  ],
+  "action_exec_max": 0.7798222899436951,
+  "action_exec_min": -0.7266501784324646,
+  "action_exec_shape": [
+    1,
+    12
+  ],
+  "action_parity_max_abs": 0.0,
+  "ddim_steps": 5,
+  "decoder_parameter_count": 553020,
+  "decoder_training": false,
+  "device": "cuda:0",
+  "gate": "smoke",
+  "noise_decoder_input_shape": [
+    1,
+    4,
+    3
+  ],
+  "noise_scaled_shape": [
+    1,
+    12
+  ],
+  "observation_shape": [
+    1,
+    11
+  ],
+  "residual_unit_max_abs": 0.0,
+  "status": "PASS",
+  "step_done": false,
+  "step_info_count": 1,
+  "step_reward": 3.99381422996521
+}

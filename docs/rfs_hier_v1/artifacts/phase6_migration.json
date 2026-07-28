@@ -1,0 +1,24 @@
+{
+  "action_parity_max_abs": 0.0,
+  "alpha_max_abs": 0.0,
+  "checkpoint": "/home/mrf/dsrl/logs/gym-dsrl/gym_hopper_dsrl_2026-07-23_21-21-02_1/2026-07-23_21-21-02_1/checkpoint/ft_policy_7500000_steps.zip",
+  "checkpoint_sha256": "e75686d06f7297b870ee8d286fc36db6ecb6cb62e9c6a1783b9466b3f0691fb6",
+  "device": "cuda:0",
+  "gate": "migration",
+  "optimizer_state_sizes": {
+    "action_critic": 0,
+    "entropy": 0,
+    "modulation_critic": 0,
+    "noise_actor": 0,
+    "residual_actor": 0
+  },
+  "parameter_max_abs": {
+    "action_critic": 0.0,
+    "action_critic_target": 0.0,
+    "actor": 0.0
+  },
+  "qm_parity_max_abs": 0.0,
+  "residual_unit_max_abs": 0.0,
+  "status": "PASS",
+  "target_entropy": 0.0
+}
