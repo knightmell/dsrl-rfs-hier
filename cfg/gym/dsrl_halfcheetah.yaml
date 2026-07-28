@@ -54,6 +54,8 @@ wandb:
   group: gym-halfcheetah
 
 train:
+  buffer_size_sac: 20000000
+  buffer_size_na: 10000000
   tau: 0.005 # Target update rate
   actor_lr: 3e-4
   batch_size: 256

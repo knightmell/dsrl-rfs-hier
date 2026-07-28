@@ -8,6 +8,7 @@ import math
 import os
 import random
 import sys
+from pathlib import Path
 
 import d4rl
 import d4rl.gym_mujoco
@@ -23,8 +24,16 @@ sys.path.append("./dppo")
 from env_utils import ActionChunkWrapper, ObservationWrapperGym
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.dsrl.hierarchical_rfs_dsrl import _LegacyLoadableDSRL
+from p6_preflight import (
+    CONTROL_ALGORITHM,
+    finalize_loaded_model_preflight,
+    resolve_seed_plan,
+    run_preflight,
+    static_preflight,
+)
 from utils import LoggingCallback, collect_rollouts, load_base_policy
 
 
@@ -117,6 +126,12 @@ def main(cfg: OmegaConf) -> None:
     torch.manual_seed(cfg.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.seed)
+    p6_seed_plan = resolve_seed_plan(cfg)
+    p6_static_manifest = static_preflight(
+        cfg,
+        Path(BASE_PATH),
+        algorithm=CONTROL_ALGORITHM,
+    )
 
     if cfg.use_wandb:
         wandb.init(
@@ -145,7 +160,20 @@ def main(cfg: OmegaConf) -> None:
     )
     eval_env = None
     try:
-        env.seed(cfg.seed + 1)
+        env.seed(p6_seed_plan["train_env_seed"])
+        manifest_path = Path(
+            hydra.utils.to_absolute_path(
+                os.path.join(cfg.logdir, "run_manifest.json")
+            )
+        )
+        run_preflight(
+            cfg,
+            env,
+            Path(BASE_PATH),
+            manifest_path,
+            algorithm=CONTROL_ALGORITHM,
+            static_manifest=p6_static_manifest,
+        )
         checkpoint_path = hydra.utils.to_absolute_path(
             cfg.rfs_hier_legacy_checkpoint_path
         )
@@ -156,9 +184,16 @@ def main(cfg: OmegaConf) -> None:
             custom_objects={"diffusion_policy": base_policy},
             buffer_size=cfg.train.buffer_size_na,
             tensorboard_log=cfg.logdir,
+            seed=cfg.seed,
         )
         reset_dsrl_optimizers(model)
         assert_network_warmstart_contract(model, cfg, env)
+        finalize_loaded_model_preflight(
+            cfg,
+            env,
+            model,
+            manifest_path,
+        )
         if cfg.get("phase6_warmstart_only", False):
             print(
                 "PHASE6_DSRL_CONTROL_WARMSTART: PASS "
@@ -179,7 +214,7 @@ def main(cfg: OmegaConf) -> None:
             n_envs=cfg.env.n_eval_envs,
             vec_env_cls=SubprocVecEnv,
         )
-        eval_env.seed(cfg.seed + cfg.env.n_envs + 1)
+        eval_env.seed(p6_seed_plan["eval_env_seed"])
         max_steps = int(cfg.env.max_episode_steps / cfg.act_steps)
         logging_callback = LoggingCallback(
             action_chunk=cfg.act_steps,
@@ -207,6 +242,11 @@ def main(cfg: OmegaConf) -> None:
                 "load_offline_data must remain false"
             )
         if cfg.train.init_rollout_steps > 0:
+            env.seed(p6_seed_plan["prefill_env_seed"])
+            set_random_seed(
+                p6_seed_plan["prefill_policy_seed"],
+                using_cuda=torch.cuda.is_available(),
+            )
             collect_rollouts(
                 model,
                 env,
@@ -217,6 +257,8 @@ def main(cfg: OmegaConf) -> None:
             logging_callback.set_timesteps(
                 cfg.train.init_rollout_steps * cfg.env.n_envs
             )
+            set_random_seed(cfg.seed, using_cuda=torch.cuda.is_available())
+            env.seed(p6_seed_plan["train_env_seed"])
 
         model.learn(
             total_timesteps=cfg.total_timesteps,

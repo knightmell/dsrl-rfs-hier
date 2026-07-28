@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,8 @@ DSRL_CONFIGS = (
     ("robomimic", "dsrl_square"),
     ("robomimic", "dsrl_transport"),
 )
+
+OmegaConf.register_new_resolver("eval", eval, replace=True)
 
 
 def compose_dsrl_config(group, config_name, overrides=None):
@@ -37,6 +40,15 @@ def test_every_existing_dsrl_config_explicitly_defaults_to_20m(
     cfg = compose_dsrl_config(group, config_name)
 
     assert cfg.total_timesteps == 20_000_000
+    assert cfg.train.buffer_size_sac == 20_000_000
+    assert cfg.train.buffer_size_na == 10_000_000
+
+
+def test_hopper_preserves_legacy_default_env_count_and_has_no_checkpoint_default():
+    cfg = compose_dsrl_config("gym", "dsrl_hopper")
+
+    assert cfg.env.n_envs == 4
+    assert cfg.rfs_hier_legacy_checkpoint_path is None
 
 
 def test_hopper_total_timesteps_can_be_explicitly_overridden_to_5m():
@@ -51,6 +63,18 @@ def test_hopper_total_timesteps_can_be_explicitly_overridden_to_5m():
 
     assert cfg.algorithm == "dsrl_na_rfs_hier"
     assert cfg.total_timesteps == 5_000_000
+
+
+def test_hopper_p6_pilot_env_count_requires_an_explicit_override():
+    default_cfg = compose_dsrl_config("gym", "dsrl_hopper")
+    pilot_cfg = compose_dsrl_config(
+        "gym",
+        "dsrl_hopper",
+        overrides=["env.n_envs=10"],
+    )
+
+    assert default_cfg.env.n_envs == 4
+    assert pilot_cfg.env.n_envs == 10
 
 
 @pytest.mark.parametrize(

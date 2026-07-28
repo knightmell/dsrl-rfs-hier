@@ -2,6 +2,7 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 import math
+from pathlib import Path
 import torch
 import random
 import wandb
@@ -16,8 +17,16 @@ sys.path.append('./dppo')
 from stable_baselines3 import SAC, DSRL, HierarchicalRFSDSRL
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from env_utils import DiffusionPolicyEnvWrapper, ObservationWrapperRobomimic, ObservationWrapperGym, ActionChunkWrapper, make_robomimic_env
+from p6_preflight import (
+	HIERARCHY_ALGORITHM,
+	finalize_loaded_model_preflight,
+	resolve_seed_plan,
+	run_preflight,
+	static_preflight,
+)
 from utils import load_base_policy, load_offline_data, collect_rollouts, LoggingCallback
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
@@ -38,6 +47,16 @@ def main(cfg: OmegaConf):
 	random.seed(cfg.seed)
 	np.random.seed(cfg.seed)
 	torch.manual_seed(cfg.seed)
+	p6_seed_plan = None
+	p6_static_manifest = None
+	p6_manifest_path = None
+	if cfg.algorithm == HIERARCHY_ALGORITHM:
+		p6_seed_plan = resolve_seed_plan(cfg)
+		p6_static_manifest = static_preflight(
+			cfg,
+			Path(base_path),
+			algorithm=HIERARCHY_ALGORITHM,
+		)
 
 	if cfg.use_wandb:
 		wandb.init(
@@ -66,7 +85,26 @@ def main(cfg: OmegaConf):
 	env = make_vec_env(make_env, n_envs=num_env, vec_env_cls=SubprocVecEnv)
 	if cfg.algorithm == 'dsrl_sac':
 		env = DiffusionPolicyEnvWrapper(env, cfg, base_policy)
-	env.seed(cfg.seed + 1)
+	train_env_seed = (
+		p6_seed_plan["train_env_seed"]
+		if p6_seed_plan is not None
+		else cfg.seed + 1
+	)
+	env.seed(train_env_seed)
+	if p6_static_manifest is not None:
+		p6_manifest_path = Path(
+			hydra.utils.to_absolute_path(
+				os.path.join(cfg.logdir, "run_manifest.json")
+			)
+		)
+		run_preflight(
+			cfg,
+			env,
+			Path(base_path),
+			p6_manifest_path,
+			algorithm=HIERARCHY_ALGORITHM,
+			static_manifest=p6_static_manifest,
+		)
 	post_linear_modules = None
 	if cfg.train.use_layer_norm:
 		post_linear_modules = [torch.nn.LayerNorm]
@@ -86,7 +124,7 @@ def main(cfg: OmegaConf):
 			"MlpPolicy",
 			env,
 			learning_rate=cfg.train.actor_lr,
-			buffer_size=20000000,      # Replay buffer size
+			buffer_size=cfg.train.buffer_size_sac,      # Replay buffer size
 			learning_starts=1,    # How many steps before learning starts (total steps for all env combined)
 			batch_size=cfg.train.batch_size,
 			tau=cfg.train.tau,                # Target network update rate
@@ -103,13 +141,14 @@ def main(cfg: OmegaConf):
 			tensorboard_log=cfg.logdir,
 			verbose=1,
 			policy_kwargs=policy_kwargs,
+			seed=cfg.seed,
 		)
 	elif cfg.algorithm == 'dsrl_na':
 		model = DSRL(
 			"MlpPolicy",
 			env,
 			learning_rate=cfg.train.actor_lr,
-			buffer_size=10000000,      # Replay buffer size
+			buffer_size=cfg.train.buffer_size_na,      # Replay buffer size
 			learning_starts=1,    # How many steps before learning starts (total steps for all env combined)
 			batch_size=cfg.train.batch_size,
 			tau=cfg.train.tau,                # Target network update rate
@@ -130,6 +169,7 @@ def main(cfg: OmegaConf):
 			diffusion_act_dim=(cfg.act_steps, cfg.action_dim),
 			noise_critic_grad_steps=cfg.train.noise_critic_grad_steps,
 			critic_backup_combine_type=cfg.train.critic_backup_combine_type,
+			seed=cfg.seed,
 		)
 	elif cfg.algorithm == 'dsrl_na_rfs_hier':
 		exec_action_low = np.asarray(env.action_space.low, dtype=np.float32).reshape(-1)
@@ -169,11 +209,21 @@ def main(cfg: OmegaConf):
 			residual_lr=cfg.train.rfs_hier_residual_lr,
 			noise_actor_gradient_steps=cfg.train.rfs_hier_noise_actor_gradient_steps,
 			residual_actor_gradient_steps=cfg.train.rfs_hier_residual_actor_gradient_steps,
+			seed=cfg.seed,
 		)
 		legacy_checkpoint_path = hydra.utils.to_absolute_path(
 			cfg.rfs_hier_legacy_checkpoint_path
 		)
 		model.initialize_from_legacy_checkpoint(legacy_checkpoint_path)
+		if p6_manifest_path is None:
+			raise RuntimeError("P6 hierarchy manifest path was not initialized")
+		finalize_loaded_model_preflight(
+			cfg,
+			env,
+			model,
+			p6_manifest_path,
+			network_warmstart=True,
+		)
 	else:
 		raise ValueError(f"Unknown algorithm: {cfg.algorithm}")
 
@@ -189,7 +239,12 @@ def main(cfg: OmegaConf):
 	eval_env = make_vec_env(make_env, n_envs=num_env_eval, vec_env_cls=SubprocVecEnv)
 	if cfg.algorithm == 'dsrl_sac':
 		eval_env = DiffusionPolicyEnvWrapper(eval_env, cfg, base_policy)
-	eval_env.seed(cfg.seed + num_env + 1) 
+	eval_env_seed = (
+		p6_seed_plan["eval_env_seed"]
+		if p6_seed_plan is not None
+		else cfg.seed + num_env + 1
+	)
+	eval_env.seed(eval_env_seed)
 
 	logging_callback = LoggingCallback(
 		action_chunk = cfg.act_steps, 
@@ -214,8 +269,17 @@ def main(cfg: OmegaConf):
 	if cfg.load_offline_data:
 		load_offline_data(model, cfg.offline_data_path, num_env)
 	if cfg.train.init_rollout_steps > 0:
+		if p6_seed_plan is not None:
+			env.seed(p6_seed_plan["prefill_env_seed"])
+			set_random_seed(
+				p6_seed_plan["prefill_policy_seed"],
+				using_cuda=torch.cuda.is_available(),
+			)
 		collect_rollouts(model, env, cfg.train.init_rollout_steps, base_policy, cfg)	
 		logging_callback.set_timesteps(cfg.train.init_rollout_steps * num_env)
+		if p6_seed_plan is not None:
+			set_random_seed(cfg.seed, using_cuda=torch.cuda.is_available())
+			env.seed(p6_seed_plan["train_env_seed"])
 
 	callbacks = [checkpoint_callback, logging_callback]
 	# Train the agent

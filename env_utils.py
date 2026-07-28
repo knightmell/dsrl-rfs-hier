@@ -105,17 +105,28 @@ class ObservationWrapperGym(gym.Env):
 		self.action_max = normalization["action_max"]
 
 	def seed(self, seed=None):
+		if hasattr(self.env, "seed"):
+			return self.env.seed(seed)
 		if seed is not None:
-			np.random.seed(seed=seed)
-		else:
-			np.random.seed()
+			self.action_space.seed(seed)
+			self.observation_space.seed(seed)
+		return [seed]
 
 	def reset(self, **kwargs):
-		options = kwargs.get("options", {})
-		new_seed = options.get("seed", None)
-		if new_seed is not None:
-			self.seed(seed=new_seed)
-		raw_obs = self.env.reset()
+		seed = kwargs.get("seed", None)
+		options = kwargs.get("options", {}) or {}
+		if seed is None:
+			seed = options.get("seed", None)
+		if seed is not None and hasattr(self.env, "seed"):
+			# D4RL Hopper uses the legacy Gym API: seed first, then reset.
+			self.seed(seed=seed)
+			raw_obs = self.env.reset()
+		elif seed is not None:
+			raw_obs = self.env.reset(seed=seed, options=options)
+		else:
+			raw_obs = self.env.reset()
+		if isinstance(raw_obs, tuple):
+			raw_obs = raw_obs[0]
 		obs = self.normalize_obs(raw_obs)
 		return obs
 

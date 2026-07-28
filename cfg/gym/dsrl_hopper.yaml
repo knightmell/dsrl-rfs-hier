@@ -9,7 +9,7 @@ logdir: ${log_dir}/gym-dsrl/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
 base_policy_path: ./dppo/log/gym-pretrain/hopper-medium-v2_pre_diffusion_mlp_ta4_td20/2024-06-12_23-10-05/checkpoint/state_3000.pt
 normalization_path: ./dppo/log/gym/${env_name}/normalization.npz
 dppo_path: ./dppo
-rfs_hier_legacy_checkpoint_path: ./logs/gym-dsrl/gym_hopper_dsrl_2026-07-23_21-21-02_1/2026-07-23_21-21-02_1/checkpoint/ft_policy_7500000_steps.zip
+rfs_hier_legacy_checkpoint_path: null
 
 algorithm: dsrl_na # options are: dsrl_na, dsrl_na_rfs_hier, dsrl_sac
 
@@ -55,6 +55,7 @@ wandb:
   group: gym-hopper
 
 train:
+  buffer_size_sac: 20000000
   buffer_size_na: 10000000
   tau: 0.005 # Target update rate
   actor_lr: 3e-4
@@ -79,6 +80,28 @@ train:
   action_magnitude: 1.5 # Maximum action magnitude in noise action space
   n_critics: 2 # Number of critic Q networks
   critic_backup_combine_type: min
+
+p6:
+  init_checkpoint_id: init_5m
+  init_checkpoint_sha256: f6deae068822cd9bc29405e493600c23aed0d0273b9068f8e16b015c7406dc8b
+  frozen_ddim_sha256: 9a5839d3d172d1e24b5bed0831d49bb3116a7e62fafa223c57c322f4bc7e9121
+  normalization_sha256: d05b2943bc39772f7f770dfc0a4df2a9f205cb1e05ae74b585cd0dd382a0742e
+  train_env_seed: ${eval:'1000 + ${seed}'}
+  eval_env_seed: ${eval:'2000 + ${seed}'}
+  prefill_env_seed: ${eval:'3000 + ${seed}'}
+  prefill_policy_seed: ${eval:'4000 + ${seed}'}
+  eval_seed_start: 10000
+  eval_seed_count: 100
+  pilot_n_envs: 10
+  expected_init_checkpoint_steps: 5000000
+  expected_action_chunk: 4
+  expected_action_dimension: 3
+  expected_ddim_steps: 5
+  expected_denoised_clip_value: 1.0
+  expected_exec_action_low: -1.0
+  expected_exec_action_high: 1.0
+  prefill_source: warmstart_dsrl
+  action_chunk_termination_semantics: legacy_continue_after_done
 
 model:
   _target_: model.diffusion.diffusion_eval.DiffusionEval
