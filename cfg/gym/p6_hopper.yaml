@@ -1,0 +1,40 @@
+defaults:
+  - dsrl_hopper
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+
+# P6 is intentionally separate from the legacy dsrl_hopper entry.  Both the
+# checkpoint and interaction budget must be explicit on every launch.
+algorithm: dsrl_na_rfs_hier
+rfs_hier_legacy_checkpoint_path: ???
+total_timesteps: ???
+name: ${p6.init_checkpoint_id}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+logdir: ${log_dir}/p6/${name}
+use_wandb: false
+
+env:
+  n_envs: 10
+  n_eval_envs: 1
+
+p6:
+  algorithm_label: dsrl_na_rfs_hier
+  action_chunk_termination_semantics: early_break_on_done
+  eval_policy_seed_start: 20000
+  prefill_artifact_path: ${log_dir}/p6-prefill/${p6.init_checkpoint_id}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}.npz
+
+  # Production cadence.  The 10k wiring run must override these explicitly and
+  # set test_cadence_override=true; tests verify these defaults remain intact.
+  online_eval_interval_chunk_transitions: 100000
+  model_checkpoint_interval_chunk_transitions: 100000
+  replay_checkpoint_interval_chunk_transitions: 500000
+  online_eval_episodes: 10
+  final_eval_episodes: 100
+  evaluation_batch_size: 1
+  diagnostics_interval_updates: 100
+  test_cadence_override: false
+
+  resume_bundle_path: null
+  stop_after_chunk_transitions: null

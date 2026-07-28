@@ -15,7 +15,7 @@ import numpy as np
 
 HIERARCHY_ALGORITHM = "dsrl_na_rfs_hier"
 CONTROL_ALGORITHM = "dsrl_na_control"
-LEGACY_CHUNK_TERMINATION = "legacy_continue_after_done"
+ACTION_CHUNK_TERMINATION = "early_break_on_done"
 PREFILL_SOURCE = "warmstart_dsrl"
 
 
@@ -38,6 +38,12 @@ def _required_int(value: Any, field_name: str, *, minimum: int = 0) -> int:
     if result < minimum:
         raise ValueError(f"{field_name} must be >= {minimum}, got {result}")
     return result
+
+
+def _optional_int(value: Any, field_name: str, *, minimum: int = 0) -> int | None:
+    if value is None:
+        return None
+    return _required_int(value, field_name, minimum=minimum)
 
 
 def _validate_sha256(value: Any, field_name: str) -> str:
@@ -235,7 +241,17 @@ def static_preflight(
             "P6 pilot n_envs must be supplied as the explicit audited override: "
             f"expected {required_n_envs}, got {n_envs}"
         )
-
+    train_freq = _required_int(
+        cfg.train.train_freq,
+        "train.train_freq",
+        minimum=1,
+    )
+    safe_boundary_chunks = n_envs * train_freq
+    if chunk_budget % safe_boundary_chunks != 0:
+        raise ValueError(
+            "Chunk budget must be divisible by n_envs * train_freq: "
+            f"{chunk_budget} % {safe_boundary_chunks} != 0"
+        )
     expected_action_chunk = _required_int(
         p6.expected_action_chunk,
         "p6.expected_action_chunk",
@@ -255,6 +271,12 @@ def static_preflight(
             "Action dimension mismatch: expected "
             f"{expected_action_dimension}, got {action_dimension}"
         )
+    if _required_int(
+        cfg.env.max_episode_steps,
+        "env.max_episode_steps",
+        minimum=1,
+    ) % action_chunk != 0:
+        raise ValueError("max_episode_steps must be divisible by action_chunk")
 
     init_checkpoint_id = _required_string(
         p6.init_checkpoint_id,
@@ -312,10 +334,107 @@ def static_preflight(
         p6.action_chunk_termination_semantics,
         "p6.action_chunk_termination_semantics",
     )
-    if termination_semantics != LEGACY_CHUNK_TERMINATION:
+    if termination_semantics != ACTION_CHUNK_TERMINATION:
         raise ValueError(
-            "P6 must preserve the audited legacy ActionChunk termination semantics"
+            "P6 requires early-break ActionChunk termination semantics"
         )
+    expected_algorithm_label = (
+        HIERARCHY_ALGORITHM
+        if algorithm == HIERARCHY_ALGORITHM
+        else CONTROL_ALGORITHM
+    )
+    algorithm_label = _required_string(
+        p6.algorithm_label,
+        "p6.algorithm_label",
+    )
+    if algorithm_label != expected_algorithm_label:
+        raise ValueError(
+            f"P6 algorithm label mismatch: {algorithm_label!r} != "
+            f"{expected_algorithm_label!r}"
+        )
+
+    online_eval_interval = _required_int(
+        p6.online_eval_interval_chunk_transitions,
+        "p6.online_eval_interval_chunk_transitions",
+        minimum=1,
+    )
+    model_checkpoint_interval = _required_int(
+        p6.model_checkpoint_interval_chunk_transitions,
+        "p6.model_checkpoint_interval_chunk_transitions",
+        minimum=1,
+    )
+    replay_checkpoint_interval = _required_int(
+        p6.replay_checkpoint_interval_chunk_transitions,
+        "p6.replay_checkpoint_interval_chunk_transitions",
+        minimum=1,
+    )
+    for field_name, interval in (
+        ("online evaluation", online_eval_interval),
+        ("model checkpoint", model_checkpoint_interval),
+        ("replay checkpoint", replay_checkpoint_interval),
+    ):
+        if interval % safe_boundary_chunks != 0:
+            raise ValueError(
+                f"{field_name} interval must be divisible by the safe boundary "
+                f"{safe_boundary_chunks}"
+            )
+    stop_after_chunk_transitions = _optional_int(
+        p6.stop_after_chunk_transitions,
+        "p6.stop_after_chunk_transitions",
+        minimum=1,
+    )
+    if stop_after_chunk_transitions is not None:
+        if stop_after_chunk_transitions >= chunk_budget:
+            raise ValueError(
+                "Intentional interruption must occur before the target budget"
+            )
+        if stop_after_chunk_transitions % safe_boundary_chunks != 0:
+            raise ValueError(
+                "Intentional interruption must align to a safe training boundary"
+            )
+        if stop_after_chunk_transitions % replay_checkpoint_interval != 0:
+            raise ValueError(
+                "Intentional interruption must align to a replay checkpoint"
+            )
+    test_cadence_override = bool(p6.test_cadence_override)
+    if test_cadence_override and chunk_budget > 10_000:
+        raise ValueError("Shortened test cadence is only allowed up to 10k chunks")
+    eval_policy_seed_start = _required_int(
+        p6.eval_policy_seed_start,
+        "p6.eval_policy_seed_start",
+    )
+    online_eval_episodes = _required_int(
+        p6.online_eval_episodes,
+        "p6.online_eval_episodes",
+        minimum=1,
+    )
+    final_eval_episodes = _required_int(
+        p6.final_eval_episodes,
+        "p6.final_eval_episodes",
+        minimum=1,
+    )
+    evaluation_batch_size = _required_int(
+        p6.evaluation_batch_size,
+        "p6.evaluation_batch_size",
+        minimum=1,
+    )
+    eval_seed_count = _required_int(
+        p6.eval_seed_count,
+        "p6.eval_seed_count",
+        minimum=1,
+    )
+    if online_eval_episodes > eval_seed_count or final_eval_episodes > eval_seed_count:
+        raise ValueError(
+            "Online/final evaluation episode counts cannot exceed eval_seed_count"
+        )
+    prefill_artifact_path = Path(
+        _required_string(
+            p6.prefill_artifact_path,
+            "p6.prefill_artifact_path",
+        )
+    ).expanduser()
+    if not prefill_artifact_path.is_absolute():
+        prefill_artifact_path = (repo_root / prefill_artifact_path).resolve()
 
     run_name = _validate_run_name(
         cfg.name,
@@ -362,8 +481,11 @@ def static_preflight(
         "action_chunk": action_chunk,
         "action_dimension": action_dimension,
         "n_envs": n_envs,
+        "train_freq": train_freq,
+        "safe_boundary_chunk_transitions": safe_boundary_chunks,
         "chunk_budget": chunk_budget,
-        "primitive_budget": chunk_budget * action_chunk,
+        "nominal_primitive_budget": chunk_budget * action_chunk,
+        "actual_primitive_budget_upper_bound": chunk_budget * action_chunk,
         "prefill_source": prefill_source,
         "prefill_transition_count": (
             _required_int(
@@ -374,7 +496,19 @@ def static_preflight(
         ),
         "prefill_hash": None,
         "prefill_status": "pending_p6_2",
+        "prefill_artifact_path": str(prefill_artifact_path),
         "action_chunk_termination_semantics": termination_semantics,
+        "online_eval_interval_chunk_transitions": online_eval_interval,
+        "model_checkpoint_interval_chunk_transitions": model_checkpoint_interval,
+        "replay_checkpoint_interval_chunk_transitions": (
+            replay_checkpoint_interval
+        ),
+        "online_eval_episodes": online_eval_episodes,
+        "final_eval_episodes": final_eval_episodes,
+        "evaluation_batch_size": evaluation_batch_size,
+        "eval_policy_seed_start": eval_policy_seed_start,
+        "test_cadence_override": test_cadence_override,
+        "stop_after_chunk_transitions": stop_after_chunk_transitions,
     }
 
 

@@ -47,6 +47,20 @@ def compose_hopper(overrides=None):
     return cfg
 
 
+def compose_p6(overrides):
+    with initialize_config_dir(
+        config_dir=str(CONFIG_DIR),
+        job_name="test_p6_preflight",
+        version_base=None,
+    ):
+        cfg = compose(
+            config_name="p6_hopper",
+            overrides=overrides,
+        )
+    OmegaConf.resolve(cfg)
+    return cfg
+
+
 def p6_config(
     *,
     algorithm=HIERARCHY_ALGORITHM,
@@ -56,13 +70,13 @@ def p6_config(
     name_algorithm = name_algorithm or algorithm
     overrides = [
         f"algorithm={'dsrl_na' if algorithm == CONTROL_ALGORITHM else algorithm}",
-        "env.n_envs=10",
+        f"p6.algorithm_label={name_algorithm}",
         "total_timesteps=100000",
         f"rfs_hier_legacy_checkpoint_path={FIVE_M_CHECKPOINT}",
         f"name=init_5m_{name_algorithm}_seed1_100000chunks",
     ]
     overrides.extend(extra_overrides or [])
-    return compose_hopper(overrides)
+    return compose_p6(overrides)
 
 
 def make_execution_env(low=-1.0, high=1.0, shape=(12,)):
@@ -120,14 +134,15 @@ def test_real_hopper_artifacts_seed_plan_and_manifest_pass(tmp_path):
     assert manifest["execution_action_low"] == [-1.0] * 12
     assert manifest["execution_action_high"] == [1.0] * 12
     assert manifest["chunk_budget"] == 100_000
-    assert manifest["primitive_budget"] == 400_000
+    assert manifest["nominal_primitive_budget"] == 400_000
+    assert manifest["actual_primitive_budget_upper_bound"] == 400_000
     assert manifest["n_envs"] == 10
     assert manifest["prefill_source"] == "warmstart_dsrl"
     assert manifest["prefill_transition_count"] == 20_010
     assert manifest["prefill_hash"] is None
     assert manifest["prefill_status"] == "pending_p6_2"
     assert manifest["action_chunk_termination_semantics"] == (
-        "legacy_continue_after_done"
+        "early_break_on_done"
     )
     assert manifest["stable_baselines3_submodule"]["commit"] == (
         manifest["stable_baselines3_submodule"]["recorded_commit"]
@@ -326,6 +341,40 @@ def test_control_uses_the_same_audited_checkpoint_and_seed_plan():
     assert manifest["init_checkpoint_id"] == "init_5m"
     assert manifest["train_env_seed"] == 1001
     assert manifest["prefill_policy_seed"] == 4001
+
+
+def test_p6_production_cadence_defaults_and_10k_override_are_explicit():
+    production = compose_p6(
+        [
+            "total_timesteps=5000000",
+            f"rfs_hier_legacy_checkpoint_path={FIVE_M_CHECKPOINT}",
+        ]
+    )
+    assert production.p6.online_eval_interval_chunk_transitions == 100_000
+    assert production.p6.model_checkpoint_interval_chunk_transitions == 100_000
+    assert production.p6.replay_checkpoint_interval_chunk_transitions == 500_000
+    assert production.p6.test_cadence_override is False
+
+    wiring = p6_config(
+        extra_overrides=[
+            "total_timesteps=10000",
+            "name=init_5m_dsrl_na_rfs_hier_seed1_10000chunks",
+            "p6.online_eval_interval_chunk_transitions=2000",
+            "p6.model_checkpoint_interval_chunk_transitions=2000",
+            "p6.replay_checkpoint_interval_chunk_transitions=5000",
+            "p6.test_cadence_override=true",
+        ]
+    )
+    manifest = static_preflight(
+        wiring,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+    assert manifest["test_cadence_override"] is True
+    assert manifest["safe_boundary_chunk_transitions"] == 20
+    assert manifest["online_eval_interval_chunk_transitions"] == 2_000
+    assert manifest["model_checkpoint_interval_chunk_transitions"] == 2_000
+    assert manifest["replay_checkpoint_interval_chunk_transitions"] == 5_000
 
 
 def test_raw_hopper_seed_reaches_the_legacy_environment():

@@ -15,6 +15,10 @@ import robomimic.utils.env_utils as EnvUtils
 import robomimic.utils.obs_utils as ObsUtils
 
 
+ACTION_CHUNK_LEGACY_CONTINUE = "legacy_continue_after_done"
+ACTION_CHUNK_EARLY_BREAK = "early_break_on_done"
+
+
 def make_robomimic_env(render=False, env='square', normalization_path=None, low_dim_keys=None, dppo_path=None):
 	wrappers = OmegaConf.create({
 		'robomimic_lowdim': {
@@ -148,10 +152,27 @@ class ObservationWrapperGym(gym.Env):
 	
 
 class ActionChunkWrapper(gymnasium.Env):
-	def __init__(self, env, cfg, max_episode_steps=300):
+	def __init__(
+		self,
+		env,
+		cfg,
+		max_episode_steps=300,
+		action_chunk_termination_semantics=ACTION_CHUNK_LEGACY_CONTINUE,
+	):
 		self.max_episode_steps = max_episode_steps
 		self.env = env
 		self.act_steps = cfg.act_steps
+		if action_chunk_termination_semantics not in {
+			ACTION_CHUNK_LEGACY_CONTINUE,
+			ACTION_CHUNK_EARLY_BREAK,
+		}:
+			raise ValueError(
+				"Unknown action chunk termination semantics: "
+				f"{action_chunk_termination_semantics!r}"
+			)
+		self.action_chunk_termination_semantics = (
+			action_chunk_termination_semantics
+		)
 		self.action_space = spaces.Box(
 			low=np.tile(env.action_space.low, cfg.act_steps),
 			high=np.tile(env.action_space.high, cfg.act_steps),
@@ -164,41 +185,116 @@ class ActionChunkWrapper(gymnasium.Env):
 		)
 		self.count = 0
 
-	def reset(self, seed=None):
-		obs = self.env.reset(seed=seed)
+	def reset(self, *, seed=None, options=None):
+		reset_kwargs = {}
+		if seed is not None:
+			reset_kwargs["seed"] = seed
+		if options is not None:
+			reset_kwargs["options"] = options
+		try:
+			obs = self.env.reset(**reset_kwargs)
+		except TypeError:
+			reset_kwargs.pop("options", None)
+			obs = self.env.reset(**reset_kwargs)
+		if isinstance(obs, tuple):
+			obs = obs[0]
 		self.count = 0
 		return obs, {}
 	
 	def step(self, action):
 		if len(action.shape) == 1:
 			action = action.reshape(self.act_steps, -1)
+		if action.shape[0] != self.act_steps:
+			raise ValueError(
+				"Action chunk length mismatch: "
+				f"expected {self.act_steps}, got {action.shape[0]}"
+			)
 		obs_ = []
 		reward_ = []
 		done_ = []
 		info_ = []
-		done_i = False
+		first_done_index = None
+		first_done_observation = None
+		first_done_info = None
+		first_terminated = False
+		first_truncated = False
 		for i in range(action.shape[0]):
 			self.count += 1
 			obs_i, reward_i, done_i, info_i = self.env.step(action[i])
+			info_i = dict(info_i)
+			reached_wrapper_limit = self.count >= self.max_episode_steps
+			env_timeout = bool(info_i.get("TimeLimit.truncated", False))
+			step_terminated = bool(done_i and not env_timeout)
+			step_truncated = bool(env_timeout or reached_wrapper_limit)
+			step_done = bool(done_i or reached_wrapper_limit)
 			obs_.append(obs_i)
 			reward_.append(reward_i)
-			done_.append(done_i)
+			done_.append(step_done)
 			info_.append(info_i)
+			if step_done and first_done_index is None:
+				first_done_index = i
+				first_done_observation = obs_i
+				first_done_info = info_i
+				first_terminated = step_terminated
+				first_truncated = step_truncated
+				if (
+					self.action_chunk_termination_semantics
+					== ACTION_CHUNK_EARLY_BREAK
+				):
+					break
 		obs = obs_[-1]
 		reward = sum(reward_)
-		done = np.max(done_)
-		info = info_[-1]
-		if self.count >= self.max_episode_steps:
-			done = True
+		done = bool(np.max(done_))
+		if (
+			self.action_chunk_termination_semantics
+			== ACTION_CHUNK_EARLY_BREAK
+			and first_done_info is not None
+		):
+			info = dict(first_done_info)
+			terminated = first_terminated
+			truncated = first_truncated
+			obs = first_done_observation
+		else:
+			# Preserve the pre-P6 legacy behavior for existing training paths.
+			info = dict(info_[-1])
+			terminated = done
+			truncated = False
+
+		actual_primitive_steps = len(reward_)
+		nominal_primitive_steps = self.act_steps
+		info.update(
+			{
+				"action_chunk_termination_semantics": (
+					self.action_chunk_termination_semantics
+				),
+				"nominal_primitive_steps": nominal_primitive_steps,
+				"actual_primitive_steps": actual_primitive_steps,
+				"early_termination_within_chunk": bool(
+					done and actual_primitive_steps < nominal_primitive_steps
+				),
+				"termination_primitive_index": first_done_index,
+				"termination_reason": (
+					"environment_terminal"
+					if first_terminated
+					else "time_limit"
+					if first_truncated
+					else None
+				),
+			}
+		)
 		if done:
-			info['terminal_observation'] = obs
-		return obs, reward, done, False, info
+			info["terminal_observation"] = (
+				first_done_observation
+				if first_done_observation is not None
+				else obs
+			)
+		return obs, reward, terminated, truncated, info
 
 	def render(self):
 		return self.env.render()
 	
 	def close(self):
-		return
+		return self.env.close()
 	
 
 class DiffusionPolicyEnvWrapper(VecEnvWrapper):
