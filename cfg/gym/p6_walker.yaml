@@ -1,0 +1,77 @@
+defaults:
+  - dsrl_walker
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+
+# P6 hierarchy entry for Walker2d.  The legacy dsrl_walker entry stays
+# unchanged; checkpoint/budget remain explicit for every P6 launch.
+algorithm: dsrl_na_rfs_hier
+rfs_hier_legacy_checkpoint_path: ???
+total_timesteps: ???
+name: ${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+logdir: ${log_dir}/p6/${name}
+use_wandb: false
+
+env:
+  n_envs: 10
+  n_eval_envs: 1
+
+train:
+  rfs_hier_residual_net_arch: [128, 128]
+  rfs_hier_residual_activation: silu
+  rfs_hier_residual_lr: 3e-4
+  rfs_hier_qa_joint_lr: 3e-4
+  rfs_hier_train_freq: 1
+  rfs_hier_schedule_profile: legacy_dsrl_warmstart_5m
+  rfs_hier_phase_b_steps: 0
+  rfs_hier_phase_r_steps: 5000000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_noise_gradient_max_norm: 1.0
+  rfs_hier_residual_gradient_max_norm: 1.0
+
+p6:
+  algorithm_label: dsrl_na_rfs_hier
+  architecture_version: dsrl_na_rfs_hier_three_critic_v1
+  replay_schema_version: hierarchy_tagged_replay_v1
+  init_checkpoint_id: init_5m
+  init_checkpoint_sha256: null
+  frozen_ddim_sha256: 1a650d5d882c78cfef1d753c532c0bdbced054738b0076efe6ce29d088681fa0
+  normalization_sha256: 7d103b793b591081947fca807ae13c2752bd6964621374101f5a89a19346ae16
+  train_env_seed: ${eval:'1000 + ${seed}'}
+  eval_env_seed: ${eval:'2000 + ${seed}'}
+  prefill_env_seed: ${eval:'3000 + ${seed}'}
+  prefill_policy_seed: ${eval:'4000 + ${seed}'}
+  eval_seed_start: 10000
+  eval_seed_count: 100
+  pilot_n_envs: 10
+  expected_init_checkpoint_steps: 5000000
+  expected_action_chunk: 4
+  expected_action_dimension: 6
+  expected_ddim_steps: 5
+  expected_denoised_clip_value: 1.0
+  expected_exec_action_low: -1.0
+  expected_exec_action_high: 1.0
+  prefill_source: warmstart_dsrl
+  action_chunk_termination_semantics: early_break_on_done
+  environment_resume_mode: reset_boundary_discontinuous
+  eval_policy_seed_start: 20000
+  prefill_artifact_path: ${log_dir}/p6-prefill/${env_name}_${p6.init_checkpoint_id}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
+  online_eval_interval_chunk_transitions: 100000
+  model_checkpoint_interval_chunk_transitions: 100000
+  replay_checkpoint_interval_chunk_transitions: 500000
+  online_eval_episodes: 10
+  final_eval_episodes: 100
+  evaluation_batch_size: 1
+  diagnostics_interval_updates: 100
+  test_cadence_override: false
+  resume_bundle_path: null
+  stop_after_chunk_transitions: null
+

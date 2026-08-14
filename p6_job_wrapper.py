@@ -67,11 +67,21 @@ def main() -> int:
         return 127
     finally:
         status["end_time_utc"] = _timestamp()
-        atomic_write_json(status_path, status)
+        # Remove the launcher lock BEFORE publishing the terminal status.  The
+        # launcher treats a complete/interrupted/failed status while the lock
+        # still exists as an in-flight run; a poller that sees status=complete
+        # must also be able to rely on the lock being gone (duplicate-launch
+        # safety and the test that asserts the pair).
         try:
             lock_path.unlink()
-        except FileNotFoundError:
+        except OSError:
+            # The status publish is the only way a poller learns the outcome,
+            # so a lock-cleanup failure must never suppress it.  FileNotFoundError
+            # (already unlinked) and any other OSError are both safe to ignore:
+            # the lock lives in the launcher's domain and stale-lock recovery
+            # exists for the crash case.
             pass
+        atomic_write_json(status_path, status)
 
 
 if __name__ == "__main__":

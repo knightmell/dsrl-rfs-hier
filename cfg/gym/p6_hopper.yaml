@@ -21,9 +21,12 @@ env:
 
 p6:
   algorithm_label: dsrl_na_rfs_hier
+  architecture_version: dsrl_na_rfs_hier_three_critic_v1
+  replay_schema_version: hierarchy_tagged_replay_v1
   action_chunk_termination_semantics: early_break_on_done
+  environment_resume_mode: reset_boundary_discontinuous
   eval_policy_seed_start: 20000
-  prefill_artifact_path: ${log_dir}/p6-prefill/${p6.init_checkpoint_id}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}.npz
+  prefill_artifact_path: ${log_dir}/p6-prefill/${p6.init_checkpoint_id}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
 
   # Production cadence.  The 10k wiring run must override these explicitly and
   # set test_cadence_override=true; tests verify these defaults remain intact.

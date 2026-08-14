@@ -11,7 +11,7 @@ normalization_path: ./dppo/log/gym/${env_name}/normalization.npz
 dppo_path: ./dppo
 rfs_hier_legacy_checkpoint_path: null
 
-algorithm: dsrl_na # options are: dsrl_na, dsrl_na_rfs_hier, dsrl_sac
+algorithm: dsrl_na # options are: dsrl_na, dsrl_na_rfs, dsrl_na_rfs_hier, dsrl_sac
 
 seed: 1
 device: cuda:0
@@ -63,14 +63,34 @@ train:
   train_freq: 2 # Update model after this many environment steps
   utd: 20 # Number of gradient steps to take per update
   noise_critic_grad_steps: 10 # Number of gradient steps to take per update when fitting noise critic 
-  use_layer_norm: True
-  rfs_hier_residual_scale: 0.1
-  rfs_hier_residual_penalty_coef: 0.0
+  rfs_residual_scale: 0.1 # Used only by dsrl_na_rfs
+  rfs_residual_log_std_init: -5.0 # Near-zero residual at initialization
   rfs_hier_residual_net_arch: [128, 128]
   rfs_hier_residual_activation: silu
   rfs_hier_residual_lr: 3e-4
+  # Residual-scale / penalty / per-actor update-cadence keys.  The hierarchy
+  # path (p6_train) drives these from the schedule update-profiles instead of
+  # these keys, but the standalone per-step residual entry
+  # (train_per_step_residual.py, tests/integration/rfs_hier_phase6.py) reads
+  # them directly — they must stay present for that entry to construct.
+  rfs_hier_residual_scale: 0.1
+  rfs_hier_residual_penalty_coef: 0.0
   rfs_hier_noise_actor_gradient_steps: 5
   rfs_hier_residual_actor_gradient_steps: 5
+  rfs_hier_qa_joint_lr: 3e-4
+  rfs_hier_train_freq: 1
+  rfs_hier_schedule_profile: legacy_dsrl_warmstart_5m
+  rfs_hier_phase_b_steps: 0
+  rfs_hier_phase_r_steps: 5000000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_noise_gradient_max_norm: 1.0
+  rfs_hier_residual_gradient_max_norm: 1.0
+  use_layer_norm: True
   layer_size: 128 # Layer size for actor and critic
   num_layers: 3 # Number of layers for actor and critic
   discount: 0.99

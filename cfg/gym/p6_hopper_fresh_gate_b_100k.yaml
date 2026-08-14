@@ -1,0 +1,37 @@
+# 100k sanity gate: cotrain hierarchy, version B (valid cross-lane).
+#
+# Identical to p6_hopper_fresh_gate_100k EXCEPT qa_base_cross_lane=true: QA_base
+# consumes 75% BASE + 25% JOINT(action_exec) rows (shared transitions,
+# separated continuations).  Same 100k Phase-B sanity gate as version A against
+# the matched flat-DSRL control.
+#
+#   python p6_train.py --config-name p6_hopper_fresh_gate_b_100k seed=1
+#   python p6_train.py --config-name p6_hopper_fresh_gate_b_100k seed=2
+#   python p6_train.py --config-name p6_hopper_fresh_gate_b_100k seed=3
+
+defaults:
+  - p6_hopper_fresh_2p5m_cotrain_b
+  - _self_
+
+name: fresh_frozen_ddim_gate_b_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 100000
+
+train:
+  # Shrink the cotrain schedule (B=0.5M:R=2.0M = 1:4) to the 100k budget while
+  # keeping the ratio and the hold+ramp structure: B=20k (QA_joint shadow),
+  # R=80k, beta held at 0 for the first 20k of R then ramped over the next 20k.
+  rfs_hier_phase_b_steps: 20000
+  rfs_hier_phase_r_steps: 80000
+  rfs_hier_beta_ramp_steps: 20000
+  rfs_hier_beta_hold_steps: 20000
+  # Just above prefill (20010) + 100k online; keeps the 10M production buffer
+  # out of the gate disk footprint.
+  buffer_size_na: 150000
+
+p6:
+  # Shortened gate cadence (all aligned to the 10-chunk safe boundary):
+  # one mid-run online eval + a final one, model/replay checkpoints every 25k
+  # so an interrupted gate can resume.
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 25000
+  replay_checkpoint_interval_chunk_transitions: 25000

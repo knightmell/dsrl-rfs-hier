@@ -1,0 +1,31 @@
+defaults:
+  - p6_halfcheetah
+  - _self_
+
+name: fresh_frozen_ddim_cotrain_${env_name}_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 2500000
+rfs_hier_legacy_checkpoint_path: null
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_cotrain
+  rfs_hier_phase_b_steps: 500000
+  rfs_hier_phase_r_steps: 2000000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_beta_hold_steps: 50000
+  rfs_hier_beta_floor: 0.02
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: false
+  rfs_hier_residual_exploration_std: 0.02
+
+p6:
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  expected_init_checkpoint_steps: 0
+

@@ -1,6 +1,7 @@
 *.swp
 *.pyc
 *.pkl
+*.mp4
 *.py~
 *.bak
 .pytest_cache
@@ -22,6 +23,9 @@ logs/
 wandb/
 dppo/log/
 dppo/checkpoints/
+
+# Paper submission materials (not part of the code repository)
+IEEE-conference-VSHS/
 
 # Setuptools distribution and build folders.
 /dist/

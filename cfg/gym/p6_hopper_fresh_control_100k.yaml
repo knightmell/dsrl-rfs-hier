@@ -1,0 +1,45 @@
+# 100k matched flat-DSRL control for the cotrain gate.
+#
+# The control isolates the residual/QA_joint machinery: flat DSRL (noise actor +
+# QA_base/QW_base + Frozen DDIM) with the same frozen DDIM checkpoint, the same
+# normalization, the same seed family, and the SAME Gaussian-prior prefill
+# artifact (fresh_frozen_ddim) as the fresh hierarchy runs.  Because the base
+# branch is built from the same seeded constructors, a fresh hierarchy and its
+# matched control start from bit-identical base weights; the comparison at the
+# gate is therefore attributable to the hierarchy's extra machinery, not to
+# init/prefill/budget.
+#
+#   python p6_train.py --config-name p6_hopper_fresh_control_100k seed=1
+#   python p6_train.py --config-name p6_hopper_fresh_control_100k seed=2
+#   python p6_train.py --config-name p6_hopper_fresh_control_100k seed=3
+
+defaults:
+  - p6_hopper
+  - _self_
+
+algorithm: dsrl_na
+name: fresh_frozen_ddim_dsrl_na_control_seed${seed}_${total_timesteps}chunks
+total_timesteps: 100000
+
+# No legacy DSRL checkpoint: fresh matched control from Frozen DDIM only.
+rfs_hier_legacy_checkpoint_path: null
+
+train:
+  # Match the hierarchy's interaction cadence (rfs_hier_train_freq=1) so the
+  # safe boundary is the same 10 chunks; prefill (20010) + 100k online fits.
+  train_freq: 1
+  buffer_size_na: 150000
+
+p6:
+  algorithm_label: dsrl_na_control
+  # Same Gaussian-prior prefill source and init id as the fresh hierarchy, so
+  # the prefill artifact is the identical seeded decode (same frozen DDIM,
+  # normalization, prefill seeds, n_envs).
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  expected_init_checkpoint_steps: 0
+  # Shortened gate cadence (all aligned to the 10-chunk safe boundary).
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 25000
+  replay_checkpoint_interval_chunk_transitions: 25000

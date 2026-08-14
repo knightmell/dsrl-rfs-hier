@@ -10,7 +10,7 @@ base_policy_path: ./dppo/log/gym-pretrain/halfcheetah-medium-v2_pre_diffusion_ml
 normalization_path: ./dppo/log/gym/${env_name}/normalization.npz
 dppo_path: ./dppo
 
-algorithm: dsrl_na # options are: dsrl_na, dsrl_sac
+algorithm: dsrl_na # options are: dsrl_na, dsrl_na_rfs, dsrl_sac
 
 seed: 1
 device: cuda:0
@@ -60,8 +60,11 @@ train:
   actor_lr: 3e-4
   batch_size: 256
   train_freq: 2 # Update model after this many environment steps
+  rfs_hier_train_freq: 1 # Flat dsrl_na_rfs update cadence (train_dsrl.py:190 reads this key)
   utd: 20 # Number of gradient steps to take per update
-  noise_critic_grad_steps: 10 # Number of gradient steps to take per update when fitting noise critic 
+  noise_critic_grad_steps: 10 # Number of gradient steps to take per update when fitting noise critic
+  rfs_residual_scale: 0.1 # Used only by dsrl_na_rfs
+  rfs_residual_log_std_init: -5.0 # Near-zero residual at initialization
   use_layer_norm: True
   layer_size: 1024 # Layer size for actor and critic
   num_layers: 3 # Number of layers for actor and critic

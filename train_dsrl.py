@@ -14,7 +14,7 @@ import d4rl.gym_mujoco
 import sys
 sys.path.append('./dppo')
  
-from stable_baselines3 import SAC, DSRL, HierarchicalRFSDSRL
+from stable_baselines3 import SAC, DSRL, RFSDSRL
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.utils import set_random_seed
@@ -22,7 +22,6 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from env_utils import DiffusionPolicyEnvWrapper, ObservationWrapperRobomimic, ObservationWrapperGym, ActionChunkWrapper, make_robomimic_env
 from p6_preflight import (
 	HIERARCHY_ALGORITHM,
-	finalize_loaded_model_preflight,
 	resolve_seed_plan,
 	run_preflight,
 	static_preflight,
@@ -43,6 +42,13 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 )
 def main(cfg: OmegaConf):
 	OmegaConf.resolve(cfg)
+	if cfg.algorithm == HIERARCHY_ALGORITHM:
+		raise RuntimeError(
+			"dsrl_na_rfs_hier requires the certified tagged-prefill, four-mode "
+			"evaluation, and reset-boundary resume path. Run p6_train.py with "
+			"cfg/gym/p6_hopper.yaml; train_dsrl.py intentionally preserves the "
+			"legacy dsrl_na paths only."
+		)
 
 	random.seed(cfg.seed)
 	np.random.seed(cfg.seed)
@@ -171,10 +177,8 @@ def main(cfg: OmegaConf):
 			critic_backup_combine_type=cfg.train.critic_backup_combine_type,
 			seed=cfg.seed,
 		)
-	elif cfg.algorithm == 'dsrl_na_rfs_hier':
-		exec_action_low = np.asarray(env.action_space.low, dtype=np.float32).reshape(-1)
-		exec_action_high = np.asarray(env.action_space.high, dtype=np.float32).reshape(-1)
-		model = HierarchicalRFSDSRL(
+	elif cfg.algorithm == 'dsrl_na_rfs':
+		model = RFSDSRL(
 			"MlpPolicy",
 			env,
 			learning_rate=cfg.train.actor_lr,
@@ -183,9 +187,13 @@ def main(cfg: OmegaConf):
 			batch_size=cfg.train.batch_size,
 			tau=cfg.train.tau,
 			gamma=cfg.train.discount,
-			train_freq=cfg.train.train_freq,
+			train_freq=cfg.train.rfs_hier_train_freq,
 			gradient_steps=cfg.train.utd,
 			action_noise=None,
+			# NB: flat dsrl_na_rfs rollouts produce no hierarchy metadata, so
+			# the tagged HierarchyTaggedReplayBuffer must NOT be wired here --
+			# its first add() would reject the untagged transition with a
+			# RuntimeError.
 			optimize_memory_usage=False,
 			ent_coef="auto" if cfg.train.ent_coef == -1 else cfg.train.ent_coef,
 			target_update_interval=1,
@@ -200,30 +208,16 @@ def main(cfg: OmegaConf):
 			diffusion_act_dim=(cfg.act_steps, cfg.action_dim),
 			noise_critic_grad_steps=cfg.train.noise_critic_grad_steps,
 			critic_backup_combine_type=cfg.train.critic_backup_combine_type,
-			exec_action_low=exec_action_low,
-			exec_action_high=exec_action_high,
-			residual_scale=cfg.train.rfs_hier_residual_scale,
-			residual_penalty_coef=cfg.train.rfs_hier_residual_penalty_coef,
-			residual_net_arch=cfg.train.rfs_hier_residual_net_arch,
-			residual_activation=cfg.train.rfs_hier_residual_activation,
-			residual_lr=cfg.train.rfs_hier_residual_lr,
-			noise_actor_gradient_steps=cfg.train.rfs_hier_noise_actor_gradient_steps,
-			residual_actor_gradient_steps=cfg.train.rfs_hier_residual_actor_gradient_steps,
+			residual_scale=cfg.train.rfs_residual_scale,
+			residual_log_std_init=cfg.train.rfs_residual_log_std_init,
 			seed=cfg.seed,
 		)
-		legacy_checkpoint_path = hydra.utils.to_absolute_path(
-			cfg.rfs_hier_legacy_checkpoint_path
-		)
-		model.initialize_from_legacy_checkpoint(legacy_checkpoint_path)
-		if p6_manifest_path is None:
-			raise RuntimeError("P6 hierarchy manifest path was not initialized")
-		finalize_loaded_model_preflight(
-			cfg,
-			env,
-			model,
-			p6_manifest_path,
-			network_warmstart=True,
-		)
+	# NOTE: the 'dsrl_na_rfs_hier' branch was removed.  The certified tagged-
+	# prefill / four-mode-eval / reset-boundary-resume path is gated behind
+	# p6_train.py (the guard at the top of main() rejects HIERARCHY_ALGORITHM
+	# here).  Keeping a stale HierarchicalRFSDSRL construction in this entry
+	# point would silently pair generic collect_rollouts with the tagged
+	# replay, which is exactly the mis-wiring this file used to contain.
 	else:
 		raise ValueError(f"Unknown algorithm: {cfg.algorithm}")
 

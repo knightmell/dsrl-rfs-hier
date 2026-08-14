@@ -1,0 +1,55 @@
+# Fresh Frozen-DDIM 2.5M co-training P6 run, version-B data-use policy.
+#
+# Identical to p6_hopper_fresh_2p5m_cotrain (version A) EXCEPT for the
+# cross-lane ablation: qa_base_cross_lane=true enables the VALID cross-lane
+# Bellman (shared transitions, separated continuations).  QA_base consumes
+# 75% BASE + 25% JOINT(action_exec) — legal because the current-state query is
+# the transition's actually-executed action and the continuation is base.  The
+# only illegal tuple remains (s, a_base, r_joint, s'_joint).  See
+# p6-cross-lane-data-use-principle memory and _sample_mixed_branch.
+#
+# Launch:
+#   python p6_train.py --config-name p6_hopper_fresh_2p5m_cotrain_b \
+#     seed=1 total_timesteps=2500000
+
+defaults:
+  - p6_hopper
+  - _self_
+
+name: fresh_frozen_ddim_cotrain_b_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 2500000
+
+# No legacy DSRL checkpoint: from-scratch init (spec 8.1).
+rfs_hier_legacy_checkpoint_path: null
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_cotrain
+  rfs_hier_phase_b_steps: 500000
+  rfs_hier_phase_r_steps: 2000000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  # Co-training schedule fields: beta held at 0 for the first 50k of Phase R,
+  # then ramped from 0.02 to the frozen target 0.1 over the next 50k.
+  rfs_hier_beta_hold_steps: 50000
+  rfs_hier_beta_floor: 0.02
+  # Co-training model-level flags: QA_joint shadow in B (no boundary clone),
+  # cross-lane replay 75/25, small pre-tanh residual exploration on the JOINT
+  # lane (active only where beta > 0).  qa_base_cross_lane=true is version B:
+  # QA_base additionally consumes 25% JOINT rows queried at action_exec.
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: true
+  rfs_hier_residual_exploration_std: 0.02
+
+p6:
+  # Frozen-DDIM Gaussian-prior prefill; no warm-start legacy actor.
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  # Not enforced for fresh (network_warmstart=True bypasses the step check);
+  # kept present so the config contract remains complete.
+  expected_init_checkpoint_steps: 0

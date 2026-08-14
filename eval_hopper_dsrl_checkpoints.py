@@ -65,6 +65,8 @@ def parse_args() -> argparse.Namespace:
         choices=("deterministic", "stochastic"),
         default=("deterministic", "stochastic"),
     )
+    parser.add_argument("--include-frozen", action="store_true")
+    parser.add_argument("--frozen-only", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
@@ -231,6 +233,119 @@ def evaluate_mode(
     }
 
 
+def evaluate_frozen(
+    base_policy,
+    cfg,
+    seeds: list[int],
+    batch_size: int,
+    policy_seed: int,
+) -> dict:
+    random.seed(policy_seed)
+    np.random.seed(policy_seed)
+    torch.manual_seed(policy_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(policy_seed)
+
+    returns: list[float] = []
+    normalized_scores: list[float] = []
+    lengths: list[int] = []
+    max_chunk_steps = int(cfg.env.max_episode_steps / cfg.act_steps)
+
+    for batch_start in range(0, len(seeds), batch_size):
+        batch_seeds = seeds[batch_start : batch_start + batch_size]
+        env_pairs = [make_env(cfg) for _ in batch_seeds]
+        try:
+            observations = np.stack(
+                [
+                    reset_with_explicit_seed(env, raw_env, seed)
+                    for (env, raw_env), seed in zip(env_pairs, batch_seeds)
+                ]
+            )
+            active = np.ones(len(batch_seeds), dtype=bool)
+            batch_returns = np.zeros(len(batch_seeds), dtype=np.float64)
+            batch_lengths = np.zeros(len(batch_seeds), dtype=np.int64)
+
+            for _ in range(max_chunk_steps):
+                prior_noise = torch.randn(
+                    len(batch_seeds),
+                    cfg.act_steps,
+                    cfg.action_dim,
+                    device=cfg.device,
+                )
+                action_exec = base_policy(
+                    torch.as_tensor(
+                        observations,
+                        device=cfg.device,
+                        dtype=torch.float32,
+                    ),
+                    prior_noise,
+                )
+                for index, ((env, _), action) in enumerate(
+                    zip(env_pairs, action_exec)
+                ):
+                    if not active[index]:
+                        continue
+                    (
+                        next_observation,
+                        reward,
+                        terminated,
+                        truncated,
+                        _,
+                    ) = env.step(action)
+                    observations[index] = next_observation
+                    batch_returns[index] += float(reward)
+                    batch_lengths[index] += cfg.act_steps
+                    if terminated or truncated:
+                        active[index] = False
+                if not active.any():
+                    break
+
+            returns.extend(batch_returns.tolist())
+            lengths.extend(batch_lengths.tolist())
+            normalized_scores.extend(
+                (
+                    100.0
+                    * np.asarray(
+                        [
+                            d4rl.get_normalized_score(cfg.env_name, score)
+                            for score in batch_returns
+                        ],
+                        dtype=np.float64,
+                    )
+                ).tolist()
+            )
+        finally:
+            for env, _ in env_pairs:
+                env.close()
+
+    return {
+        "sampling": "standard_gaussian_prior",
+        "episode_count": len(returns),
+        "seeds": seeds,
+        "return": summarize(returns),
+        "normalized_score": summarize(normalized_scores),
+        "episode_length": summarize([float(length) for length in lengths]),
+        "raw_returns": returns,
+        "raw_normalized_scores": normalized_scores,
+        "raw_episode_lengths": lengths,
+    }
+
+
+def csv_row(checkpoint_step, mode: str, evaluation: dict) -> dict:
+    return {
+        "checkpoint_step": checkpoint_step,
+        "mode": mode,
+        "episodes": evaluation["episode_count"],
+        "return_mean": evaluation["return"]["mean"],
+        "return_std": evaluation["return"]["std"],
+        "return_stderr": evaluation["return"]["stderr"],
+        "normalized_score_mean": evaluation["normalized_score"]["mean"],
+        "normalized_score_std": evaluation["normalized_score"]["std"],
+        "normalized_score_stderr": evaluation["normalized_score"]["stderr"],
+        "episode_length_mean": evaluation["episode_length"]["mean"],
+    }
+
+
 def write_results(output_path: Path, results: dict) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -255,29 +370,22 @@ def write_results(output_path: Path, results: dict) -> None:
             ),
         )
         writer.writeheader()
+        if "frozen" in results:
+            writer.writerow(
+                csv_row(
+                    checkpoint_step="frozen",
+                    mode="standard_gaussian_prior",
+                    evaluation=results["frozen"],
+                )
+            )
         for checkpoint in results["checkpoints"]:
             for mode, evaluation in checkpoint["evaluations"].items():
                 writer.writerow(
-                    {
-                        "checkpoint_step": checkpoint["checkpoint_step"],
-                        "mode": mode,
-                        "episodes": evaluation["episode_count"],
-                        "return_mean": evaluation["return"]["mean"],
-                        "return_std": evaluation["return"]["std"],
-                        "return_stderr": evaluation["return"]["stderr"],
-                        "normalized_score_mean": evaluation[
-                            "normalized_score"
-                        ]["mean"],
-                        "normalized_score_std": evaluation[
-                            "normalized_score"
-                        ]["std"],
-                        "normalized_score_stderr": evaluation[
-                            "normalized_score"
-                        ]["stderr"],
-                        "episode_length_mean": evaluation[
-                            "episode_length"
-                        ]["mean"],
-                    }
+                    csv_row(
+                        checkpoint_step=checkpoint["checkpoint_step"],
+                        mode=mode,
+                        evaluation=evaluation,
+                    )
                 )
 
 
@@ -288,7 +396,11 @@ def main() -> None:
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError(f"CUDA device is unavailable: {args.device}")
 
-    checkpoints = [path.expanduser().resolve() for path in args.checkpoints]
+    checkpoints = (
+        []
+        if args.frozen_only
+        else [path.expanduser().resolve() for path in args.checkpoints]
+    )
     for checkpoint in checkpoints:
         if not checkpoint.is_file():
             raise FileNotFoundError(checkpoint)
@@ -305,6 +417,21 @@ def main() -> None:
         "batch_size": args.batch_size,
         "checkpoints": [],
     }
+    if args.include_frozen or args.frozen_only:
+        results["frozen"] = evaluate_frozen(
+            base_policy=base_policy,
+            cfg=cfg,
+            seeds=seeds,
+            batch_size=args.batch_size,
+            policy_seed=args.policy_seed,
+        )
+        print(
+            "frozen standard_gaussian_prior: "
+            f"return={results['frozen']['return']['mean']:.3f}, "
+            "normalized_score="
+            f"{results['frozen']['normalized_score']['mean']:.3f}"
+        )
+        write_results(args.output.resolve(), results)
 
     load_env, _ = make_env(cfg)
     try:

@@ -1,0 +1,42 @@
+# Fresh Frozen-DDIM 2.5M from-scratch P6 run (three-critic Core V1).
+#
+# Derived from the frozen `fresh_frozen_ddim_5m` profile by proportional
+# scaling that preserves its 50:50 Phase B:R ratio (B=1.25M, R=1.25M).  Every
+# other frozen parameter (beta_ramp=50k, beta_target=0.1, base_lane=0.5,
+# min_branch=256, J disabled) is unchanged.  All actors/critics are trained
+# from scratch: there is NO legacy DSRL checkpoint, and the prefill is the
+# independent Gaussian decoder prior decoded through the Frozen DDIM (spec 5.3).
+#
+# Launch (see RUNBOOK_2P5M_FRESH.md):
+#   python p6_train.py --config-name p6_hopper_fresh_2p5m \
+#     seed=1 total_timesteps=2500000
+
+defaults:
+  - p6_hopper
+  - _self_
+
+name: fresh_frozen_ddim_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 2500000
+
+# No legacy DSRL checkpoint: from-scratch init (spec 8.1).
+rfs_hier_legacy_checkpoint_path: null
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m
+  rfs_hier_phase_b_steps: 1250000
+  rfs_hier_phase_r_steps: 1250000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+
+p6:
+  # Frozen-DDIM Gaussian-prior prefill; no warm-start legacy actor.
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  # Not enforced for fresh (network_warmstart=True bypasses the step check);
+  # kept present so the config contract remains complete.
+  expected_init_checkpoint_steps: 0

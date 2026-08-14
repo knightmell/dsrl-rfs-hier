@@ -27,6 +27,32 @@ def _timestamp_token() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
 
+def _validate_p6_command_run_directory(
+    command: list[str],
+    run_directory: Path,
+) -> None:
+    if not any(Path(token).name == "p6_train.py" for token in command):
+        return
+    logdir_values = [
+        token.split("=", maxsplit=1)[1]
+        for token in command
+        if token.startswith("logdir=")
+    ]
+    if len(logdir_values) != 1:
+        raise ValueError(
+            "P6 production commands require exactly one explicit logdir= override"
+        )
+    command_run_directory = Path(logdir_values[0]).expanduser()
+    if not command_run_directory.is_absolute():
+        command_run_directory = Path(__file__).resolve().parent / command_run_directory
+    command_run_directory = command_run_directory.resolve()
+    if command_run_directory != run_directory:
+        raise ValueError(
+            "Launcher --run-dir differs from the Hydra logdir override: "
+            f"{run_directory} != {command_run_directory}"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-dir", required=True)
@@ -40,6 +66,7 @@ def main() -> int:
         raise ValueError("Launcher requires a command after --")
 
     run_directory = Path(arguments.run_dir).expanduser().resolve()
+    _validate_p6_command_run_directory(command, run_directory)
     if arguments.resume:
         if not run_directory.is_dir():
             raise FileNotFoundError(f"Resume run directory is missing: {run_directory}")

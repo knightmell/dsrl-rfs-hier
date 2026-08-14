@@ -130,7 +130,7 @@ class LoggingCallback(BaseCallback):
 						wandb.log({
 							"train/success_rate": np.sum(self.episode_success) / np.sum(self.episode_completed),
 						}, step=self.log_count)
-					if self.algorithm == 'dsrl_na':
+					if self.algorithm in ['dsrl_na', 'dsrl_na_rfs']:
 						wandb.log({
 							"train/noise_critic_loss": self.locals['self'].logger.name_to_value['train/noise_critic_loss'],
 						}, step=self.log_count)
@@ -160,7 +160,7 @@ class LoggingCallback(BaseCallback):
 					for _ in range(self.max_steps):
 						if self.algorithm == 'dsrl_sac':
 							action, _ = agent.predict(obs, deterministic=deterministic)
-						elif self.algorithm in ['dsrl_na', 'dsrl_na_rfs_hier']:
+						elif self.algorithm in ['dsrl_na', 'dsrl_na_rfs', 'dsrl_na_rfs_hier']:
 							action, _ = agent.predict_diffused(obs, deterministic=deterministic)
 						next_obs, reward, done, info = env.step(action)
 						obs = next_obs
@@ -206,7 +206,7 @@ def collect_rollouts(model, env, num_steps, base_policy, cfg):
 			noise[noise > cfg.train.action_magnitude] = cfg.train.action_magnitude
 		action = base_policy(torch.tensor(obs, device=cfg.device, dtype=torch.float32), noise)
 		next_obs, reward, done, info = env.step(action)
-		if cfg.algorithm in ['dsrl_na', 'dsrl_na_rfs_hier']:
+		if cfg.algorithm in ['dsrl_na', 'dsrl_na_rfs', 'dsrl_na_rfs_hier']:
 			action_store = action
 		elif cfg.algorithm == 'dsrl_sac':
 			action_store = noise.detach().cpu().numpy()

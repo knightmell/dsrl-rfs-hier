@@ -193,6 +193,9 @@ def main(cfg: OmegaConf) -> None:
             env,
             model,
             manifest_path,
+            # This path loads a real checkpoint, so its interaction-step count
+            # is preserved and must match the manifest's expected steps.
+            legacy_loaded=True,
         )
         if cfg.get("phase6_warmstart_only", False):
             print(

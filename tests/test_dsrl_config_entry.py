@@ -4,6 +4,8 @@ import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from p6_preflight import HIERARCHY_ALGORITHM
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DSRL_CONFIGS = (
@@ -14,6 +16,13 @@ DSRL_CONFIGS = (
     ("robomimic", "dsrl_lift"),
     ("robomimic", "dsrl_square"),
     ("robomimic", "dsrl_transport"),
+)
+# Locomotion configs whose base `dsrl_na` and flat `dsrl_na_rfs` branches in
+# train_dsrl.py are the planned 10M base runs.
+GYM_DSRL_CONFIGS = (
+    "dsrl_halfcheetah",
+    "dsrl_hopper",
+    "dsrl_walker",
 )
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
@@ -100,3 +109,90 @@ def test_training_entry_uses_the_explicit_configured_total():
 
     assert "total_timesteps=cfg.total_timesteps" in source
     assert "total_timesteps=20000000" not in source
+
+
+# The flat dsrl_na_rfs branch (train_dsrl.py:180-214) reads every one of these
+# keys from cfg.train at construction time.  Accessing a missing key raises
+# ConfigAttributeError, which is exactly how the MED-3 regression surfaced
+# (rfs_hier_train_freq was absent from the HC/WK base configs).  Touching each
+# key here is a cheap smoke test that the branch can actually be constructed
+# from these configs before a 10M base run is launched.
+DSRL_NA_RFS_BRANCH_KEYS = (
+    "actor_lr",
+    "buffer_size_na",
+    "batch_size",
+    "tau",
+    "discount",
+    "rfs_hier_train_freq",
+    "utd",
+    "noise_critic_grad_steps",
+    "critic_backup_combine_type",
+    "rfs_residual_scale",
+    "rfs_residual_log_std_init",
+    "ent_coef",
+    "target_ent",
+)
+
+# The base dsrl_na branch (train_dsrl.py:152-178) reads this subset plus the
+# legacy update cadence key (which the rfs branch does not use).
+DSRL_NA_BRANCH_KEYS = (
+    "actor_lr",
+    "buffer_size_na",
+    "batch_size",
+    "tau",
+    "discount",
+    "train_freq",
+    "utd",
+    "noise_critic_grad_steps",
+    "critic_backup_combine_type",
+    "ent_coef",
+    "target_ent",
+)
+
+
+@pytest.mark.parametrize("config_name", GYM_DSRL_CONFIGS)
+def test_dsrl_na_branch_keys_resolve_for_gym_configs(config_name):
+    cfg = compose_dsrl_config(
+        "gym",
+        config_name,
+        overrides=["algorithm=dsrl_na"],
+    )
+
+    assert cfg.algorithm == "dsrl_na"
+    for key in DSRL_NA_BRANCH_KEYS:
+        value = cfg.train[key]
+        assert value is not None, f"dsrl_na branch key train.{key} is null"
+    assert cfg.train.train_freq >= 1
+
+
+@pytest.mark.parametrize("config_name", GYM_DSRL_CONFIGS)
+def test_flat_dsrl_na_rfs_branch_keys_resolve_for_gym_configs(config_name):
+    # Regression guard for MED-3: every key the flat dsrl_na_rfs branch reads
+    # must be present and usable in all three gym base configs.
+    cfg = compose_dsrl_config(
+        "gym",
+        config_name,
+        overrides=["algorithm=dsrl_na_rfs"],
+    )
+
+    assert cfg.algorithm == "dsrl_na_rfs"
+    for key in DSRL_NA_RFS_BRANCH_KEYS:
+        value = cfg.train[key]
+        assert value is not None, f"dsrl_na_rfs branch key train.{key} is null"
+    assert cfg.train.rfs_hier_train_freq >= 1
+    assert cfg.train.rfs_residual_scale >= 0
+    assert cfg.train.rfs_residual_log_std_init is not None
+
+
+def test_train_dsrl_rejects_hierarchy_algorithm_and_guard_value_is_coherent():
+    # The RuntimeError guard at the top of train_dsrl.main() fires only when
+    # the resolved algorithm equals HIERARCHY_ALGORITHM.  Pin the guard value
+    # against the imported constant so a rename cannot silently un-moor the
+    # rejection path from the actual hierarchy label.
+    cfg = compose_dsrl_config(
+        "gym",
+        "dsrl_halfcheetah",
+        overrides=["algorithm=dsrl_na_rfs_hier"],
+    )
+
+    assert cfg.algorithm == HIERARCHY_ALGORITHM
