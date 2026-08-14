@@ -220,6 +220,17 @@ def _recorded_submodule_commit(repo_root: Path, submodule_path: str) -> str:
     metadata, recorded_path = output.split("\t", maxsplit=1)
     mode, object_type, commit = metadata.split()
     if (
+        mode == "040000"
+        and object_type == "tree"
+        and recorded_path == submodule_path
+    ):
+        # Flattened submodule: the directory is tracked directly by the outer
+        # repository (mode 040000 tree instead of a 160000 gitlink).  There is
+        # no separate submodule commit to pin; the content is versioned by the
+        # outer repo, so the recorded commit is the outer HEAD the directory
+        # is checked out at.
+        return _git_output(repo_root, "rev-parse", "HEAD")
+    if (
         mode != "160000"
         or object_type != "commit"
         or recorded_path != submodule_path
