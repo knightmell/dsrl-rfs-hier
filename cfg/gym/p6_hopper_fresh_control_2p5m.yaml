@@ -1,0 +1,22 @@
+# Production 2.5M matched flat-DSRL control for the fresh VS-Hier protocol.
+
+defaults:
+  - p6_hopper
+  - _self_
+
+algorithm: dsrl_na
+name: fresh_frozen_ddim_dsrl_na_control_seed${seed}_${total_timesteps}chunks
+total_timesteps: 2500000
+rfs_hier_legacy_checkpoint_path: null
+
+train:
+  # Match the hierarchy's vector-step interaction/update boundary.
+  train_freq: 1
+
+p6:
+  algorithm_label: dsrl_na_control
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  expected_init_checkpoint_steps: 0
+
