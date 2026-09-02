@@ -1,0 +1,120 @@
+{
+  "candidate_shape": [
+    1,
+    2,
+    24
+  ],
+  "checkpoint": "/home/mrf/dsrl/logs/p6/diagnostic_base_gpu_fresh_frozen_ddim_dsrl_na_rfs_hier_2500000chunks_walker_seed1_500k/checkpoints/model_000000100000.zip",
+  "checkpoint_sha256": "a82b3579ae78b7fe91466273e63ba6a6118341d39aeb35191dc89a7f79f42ef4",
+  "command": [
+    "wbsd_probe.py",
+    "--device",
+    "cpu",
+    "--state-count",
+    "1",
+    "--candidates",
+    "2",
+    "--output",
+    "artifacts/wbsd/G0/g0_smoke_seed1_100k"
+  ],
+  "config": "/home/mrf/dsrl/logs/p6/diagnostic_base_gpu_fresh_frozen_ddim_dsrl_na_rfs_hier_2500000chunks_walker_seed1_500k/.hydra/config.yaml",
+  "config_sha256": "747fb2e8bd1caaa7c09cc2e1e2ac535223a9970c8267ed22e93992d0a2453e1a",
+  "elapsed_seconds": 4.01694360608235,
+  "finite_metrics": true,
+  "flat_latent_shape": [
+    2,
+    24
+  ],
+  "flat_observation_shape": [
+    2,
+    17
+  ],
+  "gate": "G0",
+  "git": {
+    "commit": "641c41692306c8072a2acdce9df79c08a39a7f0a",
+    "status_porcelain": "M docs/rfs_hier_v1/STAGED_DELIVERY_PLAN.md\n M p6_preflight.py\n M p6_train.py\n M stable-baselines3/stable_baselines3/dsrl/hierarchical_rfs_dsrl.py\n M stable-baselines3/tests/test_dsrl_rfs_hier_phase6.py\n M tests/test_p6_preflight.py\n?? cfg/gym/p6_halfcheetah_fresh_2p5m_joint_credit.yaml\n?? cfg/gym/p6_hopper_fresh_2p5m_joint_credit.yaml\n?? cfg/gym/p6_walker_fresh_2p5m_joint_credit.yaml\n?? docs/rfs_hier_v1/COTRAIN_2P5M_RESULTS.md\n?? docs/rfs_hier_v1/WALKER_BASE_SUPPORT_GATED_PLAN.md\n?? docs/rfs_hier_v1/figures/\n?? tests/test_wbsd_probe.py\n?? wbsd_probe.py",
+    "tracked_diff_sha256": "a043f1bfee860dc35d367cbe7565729d2d839fdcba3544fbd9b0404457189b64"
+  },
+  "material_passport": {
+    "origin_mode": "run",
+    "origin_skill": "academic-research-suite/experiment-agent",
+    "verification_status": "EXECUTED_SMOKE",
+    "version_label": "wbsd_g0_smoke_v1"
+  },
+  "mode": "real_checkpoint_cpu_smoke",
+  "model_latent_dim": 24,
+  "model_num_timesteps": 100000,
+  "model_observation_dim": 17,
+  "module_hashes_after": {
+    "actor": "391ea1955387c5291565fe2a0230412665bbab319b85d147c6ebd59e56e6dd83",
+    "critic": "783695107901206fe602b4d89839a53b1c9a8305451bec4833ecf57440baadab",
+    "critic_noise": "6889d2cd3b7c003391aa9f82498539499a409bffc2ec9501bf0aed6c6cc32443",
+    "critic_target": "6de05f5d28a6e62d318f77fee7090eb0166f40e5349eeaeb330e4a5aff93bedc",
+    "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+    "policy": "2027ebf1d5f96385691150bd43a91eea5604042c2180c88160dd7c7fee2e5594",
+    "qa_joint": "ed3e3d9453a6e60267497356dc043af32a2b42d7c27304b2437a88f5b0cf4d17",
+    "qa_joint_target": "eed49e08888328a616f0e92a935e9b8d94b24733209480404520f698af7a724c",
+    "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+    "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+    "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+  },
+  "module_hashes_before": {
+    "actor": "391ea1955387c5291565fe2a0230412665bbab319b85d147c6ebd59e56e6dd83",
+    "critic": "783695107901206fe602b4d89839a53b1c9a8305451bec4833ecf57440baadab",
+    "critic_noise": "6889d2cd3b7c003391aa9f82498539499a409bffc2ec9501bf0aed6c6cc32443",
+    "critic_target": "6de05f5d28a6e62d318f77fee7090eb0166f40e5349eeaeb330e4a5aff93bedc",
+    "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+    "policy": "2027ebf1d5f96385691150bd43a91eea5604042c2180c88160dd7c7fee2e5594",
+    "qa_joint": "ed3e3d9453a6e60267497356dc043af32a2b42d7c27304b2437a88f5b0cf4d17",
+    "qa_joint_target": "eed49e08888328a616f0e92a935e9b8d94b24733209480404520f698af7a724c",
+    "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+    "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+    "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+  },
+  "module_hashes_equal": true,
+  "query_counts": {
+    "ddim_decode_candidates": 2,
+    "environment_steps": 0,
+    "optimizer_steps": 0,
+    "qa_target_candidates": 2,
+    "qw_student_candidates": 2
+  },
+  "rows": [
+    {
+      "candidate_index": 0,
+      "qa_target_head0": 1651.9747314453125,
+      "qa_target_head1": 1642.649658203125,
+      "qw_student_head0": 1648.1280517578125,
+      "qw_student_head1": 1650.4625244140625
+    },
+    {
+      "candidate_index": 1,
+      "qa_target_head0": 1652.249755859375,
+      "qa_target_head1": 1647.425537109375,
+      "qw_student_head0": 1653.5628662109375,
+      "qw_student_head1": 1654.0572509765625
+    }
+  ],
+  "runtime": {
+    "cuda_available": false,
+    "device": "cpu",
+    "platform": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+    "python": "3.13.5",
+    "torch": "2.7.0+cu128"
+  },
+  "state_bank": "/home/mrf/dsrl/logs/p6-prefill/walker2d-medium-v2_fresh_frozen_ddim_env3001_policy4001_nenv10_tagged_v1.npz",
+  "state_bank_metadata": {
+    "available_states": 20010,
+    "requested_states": 1,
+    "selected_sha256": "3666045cf860c323482516f32f8e43d1c1f4229b64ec2c327eb4c493f252e33b",
+    "selected_states": 1,
+    "selection": "evenly_stratified_flattened_prefill_observations",
+    "source_shape": [
+      2001,
+      10,
+      17
+    ]
+  },
+  "state_bank_sha256": "369ed05f4d893bac0bc825ac7aec738dcb69f8f044a0e88af57b2195e9f81de2",
+  "status": "COMPLETE"
+}

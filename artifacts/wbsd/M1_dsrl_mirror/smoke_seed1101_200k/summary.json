@@ -1,0 +1,83 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000000200000.zip",
+      "checkpoint_sha256": "1d5e9667d758eda3eae286b0febd3d802ee6b9a2af8491fe0fd22c227b2bbc00",
+      "checkpoint_step": 200000,
+      "elapsed_seconds": 3.3483027019537985,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "bdb69ebaebcb86e6af413e9aa585137c10083090aae0be8ec340faa28987fc89",
+          "query_counts": {
+            "ddim_decode_candidates": 512,
+            "qa_online_candidates": 512,
+            "qa_target_candidates": 512,
+            "qw_candidates": 512
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "93ff4743b2537f09b0bf92c1ae3a458e6e1d9b6a69f58f836ac46dea3417bcb1",
+          "query_counts": {
+            "ddim_decode_candidates": 512,
+            "qa_online_candidates": 512,
+            "qa_target_candidates": 512,
+            "qw_candidates": 512
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 400000,
+        "action_critic_optimizer_steps": 400000,
+        "hierarchy_train_calls": 20000,
+        "modulation_critic_optimizer_steps": 200000,
+        "noise_actor_optimizer_steps": 400000,
+        "num_timesteps": 200000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    }
+  ],
+  "completed_at_utc": "2026-08-30T12:21:14.562912+00:00",
+  "device": "cuda:0",
+  "elapsed_seconds": 3.465674875304103,
+  "methods": [
+    "actor_local",
+    "gaussian_native"
+  ],
+  "mode": "matched_dsrl_na_fixed_state_qw_ranking_mirror",
+  "mutations": {
+    "backward_calls": 0,
+    "environment_steps": 0,
+    "optimizer_steps": 0
+  },
+  "pool_size": 64,
+  "prefixes": [
+    1,
+    4,
+    16,
+    64
+  ],
+  "proposal_seed": 1101,
+  "rows": 128,
+  "started_at_utc": "2026-08-30T12:21:11.092102+00:00",
+  "state_bank": "/home/mrf/dsrl/logs/p6-prefill/walker2d-medium-v2_fresh_frozen_ddim_env3002_policy4002_nenv10_tagged_v1.npz",
+  "state_bank_selected_sha256": "6d7a2a9277ce46b0a29e23a7d40e44ee7fb91407ec47f2ffd51ddb4b2d636a00",
+  "state_bank_sha256": "e964ce0d31277ec378da48bd5d1444be28f36260aca5d1c0b277165b0bb7d66b",
+  "state_count": 8,
+  "status": "complete",
+  "teachers": [
+    "native_online_qa",
+    "target_qa"
+  ]
+}

@@ -1,0 +1,10 @@
+defaults:
+  - p6_walker_base_diag_current_k1_250k
+  - _self_
+
+# Exact Current-K1 Phase-B control with only noise-actor gradient clipping
+# disabled.  The configured max norm remains 1.0 but is intentionally inert.
+name: base_diag_qw_current_k1_noclip_pilot250k_${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_noise_actor_gradient_clipping: false

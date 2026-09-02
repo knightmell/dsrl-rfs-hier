@@ -1,0 +1,335 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000000100000.zip",
+      "checkpoint_sha256": "6ecc59182b603bf2d66c5aa6f79af27ca8d124921dca01d76c3c636e15c98e79",
+      "checkpoint_step": 100000,
+      "elapsed_seconds": 4.075515181291848,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "fe60e5ae1aa7749389385ff7d7a454914d59bd7eec9da39349826237fa828686",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "7e36d77c712d3b1971becd4cd221837e32b9b2535d341c0900d895c637959a65",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 200000,
+        "action_critic_optimizer_steps": 200000,
+        "hierarchy_train_calls": 10000,
+        "modulation_critic_optimizer_steps": 100000,
+        "noise_actor_optimizer_steps": 200000,
+        "num_timesteps": 100000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    },
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000000200000.zip",
+      "checkpoint_sha256": "1d5e9667d758eda3eae286b0febd3d802ee6b9a2af8491fe0fd22c227b2bbc00",
+      "checkpoint_step": 200000,
+      "elapsed_seconds": 2.856023249682039,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "06141729174a17cfc3e9f0eba42e9b1dcdf9f870a192930cc449e12bfe6db7ba",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "7e36d77c712d3b1971becd4cd221837e32b9b2535d341c0900d895c637959a65",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 400000,
+        "action_critic_optimizer_steps": 400000,
+        "hierarchy_train_calls": 20000,
+        "modulation_critic_optimizer_steps": 200000,
+        "noise_actor_optimizer_steps": 400000,
+        "num_timesteps": 200000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    },
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000000300000.zip",
+      "checkpoint_sha256": "b63dce363b509160cf1f6980d72e60abb42ef595bc91335188426deb3b251cad",
+      "checkpoint_step": 300000,
+      "elapsed_seconds": 2.940481123048812,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "8017e14cdf3f3747ca1dd4838a8d05e97c108202add71b39cc0c6b5134fb02ff",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "7e36d77c712d3b1971becd4cd221837e32b9b2535d341c0900d895c637959a65",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 600000,
+        "action_critic_optimizer_steps": 600000,
+        "hierarchy_train_calls": 30000,
+        "modulation_critic_optimizer_steps": 300000,
+        "noise_actor_optimizer_steps": 600000,
+        "num_timesteps": 300000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    },
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000001000000.zip",
+      "checkpoint_sha256": "c582dcbd7f536cb0591bcc71598cb43f9603bceb8681349adcad2fc458d02b13",
+      "checkpoint_step": 1000000,
+      "elapsed_seconds": 2.5297952983528376,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "71bed80c00aaa73fa90af7f60bfae555dd647ca956a5234b91d9b417e113a36a",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "7e36d77c712d3b1971becd4cd221837e32b9b2535d341c0900d895c637959a65",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 2000000,
+        "action_critic_optimizer_steps": 2000000,
+        "hierarchy_train_calls": 100000,
+        "modulation_critic_optimizer_steps": 1000000,
+        "noise_actor_optimizer_steps": 2000000,
+        "num_timesteps": 1000000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    },
+    {
+      "checkpoint": "/home/mrf/dsrl/logs/p6/fresh_frozen_ddim_control_walker2d-medium-v2_dsrl_na_seed2_2500000chunks/checkpoints/model_000002500000.zip",
+      "checkpoint_sha256": "52ec6f90517477ab5c2024f08afe891aba6f1effdad1f175abbe009524d0caab",
+      "checkpoint_step": 2500000,
+      "elapsed_seconds": 2.613394766114652,
+      "module_hashes_equal": true,
+      "pool_records": {
+        "actor_local": {
+          "pool_sha256": "e774092b0b639a6f478efb7cf3bf33c9c6d45220558bbe9e790d566fa0fdcc4a",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        },
+        "gaussian_native": {
+          "pool_sha256": "7e36d77c712d3b1971becd4cd221837e32b9b2535d341c0900d895c637959a65",
+          "query_counts": {
+            "ddim_decode_candidates": 32768,
+            "qa_online_candidates": 32768,
+            "qa_target_candidates": 32768,
+            "qw_candidates": 32768
+          }
+        }
+      },
+      "training_counters": {
+        "_n_updates": 5000000,
+        "action_critic_optimizer_steps": 5000000,
+        "hierarchy_train_calls": 250000,
+        "modulation_critic_optimizer_steps": 2500000,
+        "noise_actor_optimizer_steps": 5000000,
+        "num_timesteps": 2500000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    }
+  ],
+  "completed_at_utc": "2026-08-30T12:22:05.619872+00:00",
+  "device": "cuda:0",
+  "elapsed_seconds": 15.606139939744025,
+  "methods": [
+    "actor_local",
+    "gaussian_native"
+  ],
+  "mode": "matched_dsrl_na_fixed_state_qw_ranking_mirror",
+  "mutations": {
+    "backward_calls": 0,
+    "environment_steps": 0,
+    "optimizer_steps": 0
+  },
+  "pool_size": 64,
+  "prefixes": [
+    1,
+    4,
+    16,
+    64
+  ],
+  "proposal_seed": 4404,
+  "rows": 40960,
+  "started_at_utc": "2026-08-30T12:21:50.007799+00:00",
+  "state_bank": "/home/mrf/dsrl/logs/p6-prefill/walker2d-medium-v2_fresh_frozen_ddim_env3002_policy4002_nenv10_tagged_v1.npz",
+  "state_bank_selected_sha256": "a02ee21c84b1ee0973b0641eeb7d210fd91e800ddc82fed65050eb4ad32a5dc7",
+  "state_bank_sha256": "e964ce0d31277ec378da48bd5d1444be28f36260aca5d1c0b277165b0bb7d66b",
+  "state_count": 512,
+  "status": "complete",
+  "teachers": [
+    "native_online_qa",
+    "target_qa"
+  ]
+}

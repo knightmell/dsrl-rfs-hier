@@ -17,7 +17,12 @@ import numpy as np
 from stable_baselines3.dsrl.hierarchical_replay_buffer import (
     SCHEMA_VERSION as HIERARCHY_REPLAY_SCHEMA_VERSION,
 )
-from stable_baselines3.dsrl.hierarchical_rfs_dsrl import ARCHITECTURE_VERSION
+from stable_baselines3.dsrl.hierarchical_rfs_dsrl import (
+    ARCHITECTURE_VERSION,
+    QW_TEACHER_SOURCE_CURRENT_ACTOR,
+    QW_TEACHER_SOURCE_GAUSSIAN,
+    QW_TEACHER_SOURCES,
+)
 from stable_baselines3.dsrl.hierarchy_schedule import (
     DEFAULT_UPDATE_PROFILES,
     make_hierarchy_schedule,
@@ -39,6 +44,8 @@ FRESH_FROZEN_PROFILES = (
     "fresh_frozen_ddim_5m",
     "fresh_frozen_ddim_2p5m",
     "fresh_frozen_ddim_2p5m_cotrain",
+    "fresh_frozen_ddim_2p5m_additive_res",
+    "fresh_frozen_ddim_2p5m_base_continue",
 )
 SUPPORTED_HIERARCHY_PROFILES = (LEGACY_WARMSTART_PROFILE, *FRESH_FROZEN_PROFILES)
 PREFILL_SOURCE = "warmstart_dsrl"
@@ -488,6 +495,51 @@ def static_preflight(
             raise ValueError(
                 "Hierarchy minimum branch replay transitions must be >= batch size"
             )
+        qw_teacher_source = _required_string(
+            cfg.train.get(
+                "rfs_hier_qw_teacher_source",
+                QW_TEACHER_SOURCE_CURRENT_ACTOR,
+            ),
+            "train.rfs_hier_qw_teacher_source",
+        )
+        if qw_teacher_source not in QW_TEACHER_SOURCES:
+            raise ValueError(
+                "train.rfs_hier_qw_teacher_source must be one of "
+                f"{sorted(QW_TEACHER_SOURCES)}, got {qw_teacher_source!r}"
+            )
+        qw_candidates_per_state = _required_int(
+            cfg.train.get("rfs_hier_qw_candidates_per_state", 1),
+            "train.rfs_hier_qw_candidates_per_state",
+            minimum=1,
+        )
+        qw_state_batch_size = _required_int(
+            cfg.train.get("rfs_hier_qw_state_batch_size", batch_size),
+            "train.rfs_hier_qw_state_batch_size",
+            minimum=1,
+        )
+        qw_teacher_queries_per_update = (
+            qw_candidates_per_state * qw_state_batch_size
+        )
+        qw_teacher_microbatch_size = _required_int(
+            cfg.train.get(
+                "rfs_hier_qw_teacher_microbatch_size",
+                qw_teacher_queries_per_update,
+            ),
+            "train.rfs_hier_qw_teacher_microbatch_size",
+            minimum=1,
+        )
+        if (
+            qw_candidates_per_state > 1
+            and qw_teacher_source != QW_TEACHER_SOURCE_GAUSSIAN
+        ):
+            raise ValueError(
+                "rfs_hier_qw_candidates_per_state > 1 requires "
+                "rfs_hier_qw_teacher_source='gaussian'"
+            )
+        noise_actor_gradient_clipping = _required_bool(
+            cfg.train.get("rfs_hier_noise_actor_gradient_clipping", True),
+            "train.rfs_hier_noise_actor_gradient_clipping",
+        )
         hierarchy_contract = {
             "architecture_version": ARCHITECTURE_VERSION,
             "replay_schema_version": HIERARCHY_REPLAY_SCHEMA_VERSION,
@@ -523,6 +575,15 @@ def static_preflight(
             "residual_exploration_std": float(
                 cfg.train.get("rfs_hier_residual_exploration_std", 0.0)
             ),
+            "qw_teacher_joint_credit": bool(
+                cfg.train.get("rfs_hier_qw_teacher_joint_credit", False)
+            ),
+            "qw_teacher_source": qw_teacher_source,
+            "qw_candidates_per_state": qw_candidates_per_state,
+            "qw_state_batch_size": qw_state_batch_size,
+            "qw_teacher_microbatch_size": qw_teacher_microbatch_size,
+            "qw_teacher_queries_per_update": qw_teacher_queries_per_update,
+            "noise_actor_gradient_clipping": noise_actor_gradient_clipping,
         }
     safe_boundary_chunks = n_envs * train_freq
     if chunk_budget % safe_boundary_chunks != 0:

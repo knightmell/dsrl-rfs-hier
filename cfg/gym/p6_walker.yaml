@@ -35,6 +35,14 @@ train:
   rfs_hier_base_lane_probability: 0.5
   rfs_hier_min_branch_replay_transitions: 256
   rfs_hier_noise_gradient_max_norm: 1.0
+  # Explicit switch for attribution experiments.  Existing production arms
+  # retain the historical max-norm clipping unless an arm opts out.
+  rfs_hier_noise_actor_gradient_clipping: true
+  # QW teacher-depth controls.  These defaults preserve the historical K=1
+  # path; dedicated diagnosis arms override all three fields explicitly.
+  rfs_hier_qw_candidates_per_state: 1
+  rfs_hier_qw_state_batch_size: ${train.batch_size}
+  rfs_hier_qw_teacher_microbatch_size: ${train.batch_size}
   rfs_hier_residual_gradient_max_norm: 1.0
 
 p6:
@@ -74,4 +82,3 @@ p6:
   test_cadence_override: false
   resume_bundle_path: null
   stop_after_chunk_transitions: null
-

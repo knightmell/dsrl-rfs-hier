@@ -1,0 +1,13 @@
+{
+  "aggregate_groups": 16,
+  "mode": "matched_dsrl_na_mirror_aggregate",
+  "proposal_seeds": [
+    1101
+  ],
+  "state_bank_selected_sha256": "6d7a2a9277ce46b0a29e23a7d40e44ee7fb91407ec47f2ffd51ddb4b2d636a00",
+  "status": "complete",
+  "worker_count": 1,
+  "worker_manifests": [
+    "/home/mrf/dsrl/artifacts/wbsd/M1_dsrl_mirror/smoke_seed1101_200k/manifest.json"
+  ]
+}

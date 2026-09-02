@@ -1,0 +1,16 @@
+defaults:
+  - p6_walker_base_diag_gaussian_k1_noclip_250k
+  - _self_
+
+name: base_diag_qw_gaussian_k4_b256_noclip_100k_${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_qw_candidates_per_state: 4
+  rfs_hier_qw_state_batch_size: 256
+  rfs_hier_qw_teacher_microbatch_size: 256
+
+p6:
+  stop_after_chunk_transitions: 100000
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 100000

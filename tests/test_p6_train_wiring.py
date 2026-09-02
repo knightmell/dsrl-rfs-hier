@@ -16,6 +16,7 @@ from p6_train import (
     _close_resources_safely,
     _construct_fresh_control,
     _control_is_fresh,
+    _construct_hierarchy,
     _finish_attempt,
     _make_policy_kwargs,
     _network_warmstart_label,
@@ -164,6 +165,102 @@ def make_control_cfg(*, seed=4):
             },
         }
     )
+
+
+def make_hierarchy_source_cfg(source="gaussian"):
+    return OmegaConf.merge(
+        make_control_cfg(),
+        {
+            "rfs_hier_legacy_checkpoint_path": None,
+            "p6": {
+                "train_env_seed": 1004,
+                "action_chunk_termination_semantics": "early_break_on_done",
+                "diagnostics_interval_updates": 100,
+            },
+            "train": {
+                "rfs_hier_train_freq": 1,
+                "rfs_hier_residual_net_arch": [8, 8],
+                "rfs_hier_residual_activation": "silu",
+                "rfs_hier_residual_lr": 3e-4,
+                "rfs_hier_qa_joint_lr": 3e-4,
+                "rfs_hier_schedule_profile": "fresh_frozen_ddim_2p5m_cotrain",
+                "rfs_hier_phase_b_steps": 4,
+                "rfs_hier_phase_r_steps": 8,
+                "rfs_hier_phase_j_steps": 0,
+                "rfs_hier_phase_j_enabled": False,
+                "rfs_hier_beta_ramp_steps": 4,
+                "rfs_hier_beta_target": 0.1,
+                "rfs_hier_base_lane_probability": 0.5,
+                "rfs_hier_beta_hold_steps": 4,
+                "rfs_hier_beta_floor": 0.02,
+                "rfs_hier_qa_joint_shadow_in_b": True,
+                "rfs_hier_qw_teacher_joint_credit": False,
+                "rfs_hier_qw_teacher_source": source,
+                "rfs_hier_qw_candidates_per_state": 8,
+                "rfs_hier_qw_state_batch_size": 32,
+                "rfs_hier_qw_teacher_microbatch_size": 64,
+                "rfs_hier_cross_lane_ratio": 0.25,
+                "rfs_hier_qa_base_cross_lane": False,
+                "rfs_hier_residual_exploration_std": 0.02,
+                "rfs_hier_min_branch_replay_transitions": 2,
+                "rfs_hier_noise_gradient_max_norm": 1.0,
+                "rfs_hier_residual_gradient_max_norm": 1.0,
+            },
+        },
+    )
+
+
+def test_construct_hierarchy_forwards_qw_teacher_source(monkeypatch):
+    captured = {}
+
+    class CapturingHierarchy:
+        def __init__(self, *args, **kwargs):
+            del args
+            captured.update(kwargs)
+            self.initialized = False
+
+        def initialize_from_fresh_frozen_ddim(self):
+            self.initialized = True
+
+    monkeypatch.setattr("p6_train.HierarchicalRFSDSRL", CapturingHierarchy)
+    model = _construct_hierarchy(
+        make_hierarchy_source_cfg("gaussian"),
+        TinyEnvironment(),
+        IdentityDecoder(),
+        init_mode="fresh",
+    )
+
+    assert model.initialized is True
+    assert captured["qw_teacher_source"] == "gaussian"
+    assert captured["qw_candidates_per_state"] == 8
+    assert captured["qw_state_batch_size"] == 32
+    assert captured["qw_teacher_microbatch_size"] == 64
+
+
+def test_construct_hierarchy_forwards_noise_actor_no_clip_switch(monkeypatch):
+    captured = {}
+
+    class CapturingHierarchy:
+        def __init__(self, *args, **kwargs):
+            del args
+            captured.update(kwargs)
+            self.initialized = False
+
+        def initialize_from_fresh_frozen_ddim(self):
+            self.initialized = True
+
+    cfg = make_hierarchy_source_cfg("current_actor")
+    cfg.train.rfs_hier_noise_actor_gradient_clipping = False
+    monkeypatch.setattr("p6_train.HierarchicalRFSDSRL", CapturingHierarchy)
+    model = _construct_hierarchy(
+        cfg,
+        TinyEnvironment(),
+        IdentityDecoder(),
+        init_mode="fresh",
+    )
+
+    assert model.initialized is True
+    assert captured["noise_actor_gradient_clipping"] is False
 
 
 def make_hierarchy_fresh(decoder=None, *, cfg=None):

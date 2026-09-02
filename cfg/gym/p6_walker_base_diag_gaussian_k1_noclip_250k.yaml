@@ -1,0 +1,10 @@
+defaults:
+  - p6_walker_base_diag_gaussian_k1_250k
+  - _self_
+
+# Paired Gaussian-K1 Phase-B arm.  It differs from Current-K1-NoClip only in
+# the already-declared QW teacher source and collision-free run path.
+name: base_diag_qw_gaussian_k1_noclip_pilot250k_${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_noise_actor_gradient_clipping: false

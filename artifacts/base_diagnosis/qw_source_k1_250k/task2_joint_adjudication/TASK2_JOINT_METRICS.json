@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "task": "Task 2 — Walker 250k three-party joint adjudication",
+  "executed_at": "2026-08-30T02:00:33+08:00",
+  "status": "BLOCKED",
+  "prerequisite_gate": {
+    "passed": false,
+    "required_exact_chunk": 250000,
+    "reason": "Both formal runs were only at actual_step 200000 and still running; 250k model/replay bundles, COMPLETE markers, intentional-interruption evidence, and bounded-stop terminal statuses were absent."
+  },
+  "inputs": {
+    "current_k1": {
+      "requested_step": 250000,
+      "actual_step": 200000,
+      "run_directory": "/home/mrf/dsrl/logs/p6/base_diag_qw_current_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks",
+      "manifest_path": "/home/mrf/dsrl/logs/p6/base_diag_qw_current_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks/run_manifest.json",
+      "manifest_sha256": "804ea2e9a5fff3109f286e100138ac28a4650ba98bd576c0fcaf6bd0ad5ce0f0",
+      "latest_model_checkpoint_path": "/home/mrf/dsrl/logs/p6/base_diag_qw_current_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks/checkpoints/model_000000200000.zip",
+      "latest_model_checkpoint_sha256": "43b14e42055ad7fbdc3e99cd6c09c4bd3440afb3783d75791eedfb6fd47a7f9d",
+      "run_status": "running",
+      "training_status": "running",
+      "final_evaluation_status": "pending",
+      "running_marker": {"present": true, "sha256": "80240996f0afd01bbc37522842f7776718689df92cc86ae99186fb162cfc2444"},
+      "complete_marker_present": false,
+      "intentional_interruption_evidence_present": false,
+      "model_replay_bundle_at_requested_step_present": false
+    },
+    "gaussian_k1": {
+      "requested_step": 250000,
+      "actual_step": 200000,
+      "run_directory": "/home/mrf/dsrl/logs/p6/base_diag_qw_gaussian_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks",
+      "manifest_path": "/home/mrf/dsrl/logs/p6/base_diag_qw_gaussian_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks/run_manifest.json",
+      "manifest_sha256": "f83329ce3d01364511d65112f36e3209a718226fad0edf0fcfb93f3f86ec3668",
+      "latest_model_checkpoint_path": "/home/mrf/dsrl/logs/p6/base_diag_qw_gaussian_k1_pilot250k_fresh_frozen_ddim_walker2d-medium-v2_dsrl_na_rfs_hier_seed1_2500000chunks/checkpoints/model_000000200000.zip",
+      "latest_model_checkpoint_sha256": "6ac955e606a5e894f48694fdf80e963b4b12b7f886386946bd0e66ae7675e8a5",
+      "run_status": "running",
+      "training_status": "running",
+      "final_evaluation_status": "pending",
+      "running_marker": {"present": true, "sha256": "80240996f0afd01bbc37522842f7776718689df92cc86ae99186fb162cfc2444"},
+      "complete_marker_present": false,
+      "intentional_interruption_evidence_present": false,
+      "model_replay_bundle_at_requested_step_present": false
+    },
+    "matched_dsrl_na": {
+      "status": "not_inspected_due_to_failed_prerequisite_gate",
+      "requested_step": null,
+      "actual_step": null,
+      "checkpoint_path": null,
+      "checkpoint_sha256": null
+    }
+  },
+  "matching_evidence": {
+    "state_ids": null,
+    "state_bank_sha256": null,
+    "candidate_ids": null,
+    "candidate_prefix_sha256": null,
+    "proposal_seeds": null,
+    "crn": null,
+    "availability": "unavailable_prerequisite_failed"
+  },
+  "return_metrics": {
+    "fixed_evaluator_points": [0, 50000, 100000, 150000, 200000, 250000],
+    "auc_0_250k": {"current_k1": null, "gaussian_k1": null, "paired_difference": null},
+    "paired_differences": {"50000": null, "100000": null, "150000": null, "200000": null, "250000": null},
+    "availability": "unavailable_prerequisite_failed_and_250k_point_missing"
+  },
+  "mechanism_metrics": {
+    "within_state_qw_pairwise": null,
+    "qw_spearman": null,
+    "directional_positive_gain_rate": null,
+    "normalized_regret": null,
+    "qw_qa_exploitation_gap": null,
+    "actor_parameter_update_norm": null,
+    "alpha": null,
+    "entropy": null,
+    "noise_mean": null,
+    "noise_std": null,
+    "qa_twin_disagreement": null,
+    "td_error": null,
+    "availability": "unavailable_prerequisite_failed"
+  },
+  "probe_read_only_invariants": {
+    "probe_executed": false,
+    "parameters_frozen": null,
+    "replay_unchanged": null,
+    "env_step_called": false,
+    "optimizer_step_called": false,
+    "module_hashes_before_after": null,
+    "optimizer_counters_before_after": null,
+    "env_counters_before_after": null,
+    "cpu_rng_before_after": null,
+    "cuda_rng_before_after": null,
+    "note": "Probe was not entered because the prerequisite gate failed."
+  },
+  "warnings": [
+    "Neither run was exactly at 250000 chunks.",
+    "Both runs remained running with final evaluation pending.",
+    "No partial AUC or mechanism values were fabricated or extrapolated.",
+    "No 300k/500k checkpoint was substituted for 250k."
+  ],
+  "adjudication": {
+    "branch": null,
+    "inconclusive": false,
+    "next_gate": null,
+    "blocked_action": "Wait for both formal runs to naturally reach exactly 250000 with complete model/replay, COMPLETE, intentional-interruption, and normal bounded-stop evidence, then rerun adjudication.",
+    "automatic_experiment_authorized": false
+  }
+}

@@ -17,6 +17,7 @@ from stable_baselines3.dsrl.hierarchy_schedule import (
     make_hierarchy_schedule,
 )
 from stable_baselines3.dsrl.hierarchical_replay_buffer import BranchMode
+from stable_baselines3.dsrl.hierarchical_rfs_dsrl import compose_action
 from tests.three_critic_test_utils import make_model, metadata_row, populate_branch
 
 
@@ -50,6 +51,50 @@ def _drive_train(model, batch_start: int, num_timesteps: int) -> None:
     model._last_action_beta = model.hierarchy_schedule.beta_at(batch_start)
     model._collected_phase_since_train = int(0)
     model.train(20, 2)
+
+
+class _RecordingChunkDecoder(th.nn.Module):
+    """Identity decoder that exposes the teacher input without replacing it."""
+
+    def __init__(self):
+        super().__init__()
+        self.gain = th.nn.Parameter(th.ones(()))
+        self.last_noise_decoder_input = None
+
+    def forward(self, observation, noise_decoder_input, return_numpy=False):
+        del observation
+        self.last_noise_decoder_input = noise_decoder_input.detach().clone()
+        result = (noise_decoder_input * self.gain).clamp(-1.0, 1.0)
+        return result.detach().cpu().numpy() if return_numpy else result
+
+
+class _CountingChunkDecoder(th.nn.Module):
+    """Decoder spy used to verify bounded multi-w teacher microbatches."""
+
+    def __init__(self):
+        super().__init__()
+        self.gain = th.nn.Parameter(th.ones(()))
+        self.batch_sizes = []
+
+    def forward(self, observation, noise_decoder_input, return_numpy=False):
+        assert observation.shape[0] == noise_decoder_input.shape[0]
+        self.batch_sizes.append(int(noise_decoder_input.shape[0]))
+        result = (noise_decoder_input * self.gain).clamp(-1.0, 1.0)
+        return result.detach().cpu().numpy() if return_numpy else result
+
+
+def _capture_qw_noise(model, sample):
+    captured = {}
+
+    def capture(_module, inputs):
+        captured["noise_scaled"] = inputs[1].detach().clone()
+
+    handle = model.qw_base.register_forward_pre_hook(capture)
+    try:
+        model._qw_base_loss(sample)
+    finally:
+        handle.remove()
+    return captured["noise_scaled"]
 
 
 # ---------------------------------------------------------------------------
@@ -417,3 +462,288 @@ def test_residual_exploration_flows_into_executed_action_and_metadata():
     )
     assert th.allclose(d1.action_exec, d2.action_exec)
     assert th.allclose(d1.action_exec, d1.action_base)
+
+
+# ---------------------------------------------------------------------------
+# E4 joint-credit baseline: QW teacher switch in Phase R only
+# ---------------------------------------------------------------------------
+
+def _base_teacher(model, observations):
+    with th.no_grad():
+        noise, _ = model.actor.action_log_prob(observations)
+        decoder = model._unscale_noise(noise)
+        base = model._decode_noise_decoder_input(observations, decoder)
+        return tuple(
+            value.detach()
+            for value in model.qa_base_target(observations, base)
+        )
+
+
+def _joint_teacher_at_current_composed(model, observations):
+    with th.no_grad():
+        noise, _ = model.actor.action_log_prob(observations)
+        decoder = model._unscale_noise(noise)
+        base = model._decode_noise_decoder_input(observations, decoder)
+        logits = model.residual_actor.forward_pre_tanh(
+            observations, noise, base
+        )
+        composition = compose_action(
+            base,
+            logits,
+            model._last_action_beta,
+            model._exec_action_low_tensor,
+            model._exec_action_high_tensor,
+            numerical_tolerance=model.numerical_bound_tolerance,
+        )
+        return tuple(
+            value.detach()
+            for value in model.qa_joint_target(
+                observations, composition.action_exec
+            )
+        )
+
+
+def test_qw_teacher_joint_credit_flag_default_off():
+    model, _ = make_model()  # frozen profile: flag must default OFF
+    assert model.qw_teacher_joint_credit is False
+
+
+def test_qw_teacher_joint_credit_phase_b_keeps_base_teacher():
+    """E4 flag ON must not change Phase B (bit-identical to VS-Hier)."""
+    model, _ = _make_cotrain_model(qw_teacher_joint_credit=True)
+    populate_branch(model, BranchMode.BASE, rows=2)
+    model.num_timesteps = 2  # Phase B
+    model._last_action_beta = model.hierarchy_schedule.beta_at(1)
+    # The actor samples noise inside the loss; reseed so the expected
+    # re-computation draws the identical noise.
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+    _, _, teacher = model._qw_base_loss(sample)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    expected = _base_teacher(model, sample.observations)
+    assert len(teacher) == len(expected)
+    for got, want in zip(teacher, expected):
+        th.testing.assert_close(got, want, rtol=0, atol=0)
+
+
+def test_qw_teacher_joint_credit_phase_r_switches_to_joint_value():
+    """E4 flag ON in Phase R: teacher = qa_joint_target at the CURRENT
+    composed action (replay base + current residual at replay noise/base),
+    fully detached, and it differs from the QA_base teacher."""
+    model, _ = _make_cotrain_model(qw_teacher_joint_credit=True)
+    populate_branch(model, BranchMode.BASE, rows=2)
+    model.num_timesteps = 4
+    model._ensure_phase_activation()
+    model.num_timesteps = 12  # deep into R: beta ramp finished (0.1)
+    model._last_action_beta = model.hierarchy_schedule.beta_at(12)
+    # Train a few R-phase steps first: at fresh init the residual output layer
+    # is zero (composed == base), which would make the joint teacher coincide
+    # with the base teacher trivially.
+    _drive_train(model, batch_start=12, num_timesteps=12)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+    _, _, teacher = model._qw_base_loss(sample)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    expected = _joint_teacher_at_current_composed(model, sample.observations)
+    assert len(teacher) == len(expected)
+    for got, want in zip(teacher, expected):
+        th.testing.assert_close(got, want, rtol=0, atol=0)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    base_teacher = _base_teacher(model, sample.observations)
+    assert not th.allclose(teacher[0], base_teacher[0]), (
+        "joint-credit teacher must differ from the QA_base teacher"
+    )
+
+
+def test_qw_teacher_joint_credit_off_in_r_keeps_base_teacher():
+    """Flag OFF (VS-Hier) in Phase R: teacher stays QA_base_target."""
+    model, _ = _make_cotrain_model()  # flag default False
+    populate_branch(model, BranchMode.BASE, rows=2)
+    model.num_timesteps = 4
+    model._ensure_phase_activation()
+    model.num_timesteps = 12
+    model._last_action_beta = model.hierarchy_schedule.beta_at(12)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+    _, _, teacher = model._qw_base_loss(sample)
+    th.manual_seed(1234)
+    np.random.seed(1234)
+    expected = _base_teacher(model, sample.observations)
+    for got, want in zip(teacher, expected):
+        th.testing.assert_close(got, want, rtol=0, atol=0)
+
+
+def test_qw_teacher_joint_credit_r_train_runs_with_switch():
+    """End-to-end train() in Phase R with the E4 flag: QW still steps (2),
+    residual still steps (1 post-ramp), no crash from the teacher compose."""
+    model, _ = _make_cotrain_model(qw_teacher_joint_credit=True)
+    populate_branch(model, BranchMode.BASE, rows=2)
+    populate_branch(model, BranchMode.JOINT, rows=2)
+    model.num_timesteps = 4
+    model._ensure_phase_activation()
+    # Post-ramp (beta=0.1): residual gated ON; QW teacher uses joint value.
+    _drive_train(model, batch_start=12, num_timesteps=12)
+    assert model.qw_base_optimizer_steps == 2
+    assert model.residual_actor_optimizer_steps == 1
+    assert model.qa_base_optimizer_steps == 5
+
+
+# ---------------------------------------------------------------------------
+# Base-diagnosis source-only intervention: Current-K1 vs Gaussian-K1
+# ---------------------------------------------------------------------------
+
+
+def test_qw_teacher_source_rejects_unknown_distribution():
+    with pytest.raises(ValueError, match="qw_teacher_source"):
+        make_model(qw_teacher_source="not-a-distribution")
+
+
+def test_qw_teacher_current_k1_uses_actor_noise_for_each_replay_state():
+    """The explicit Current-K1 arm must preserve the former actor-local path."""
+    decoder = _RecordingChunkDecoder()
+    model, _ = make_model(
+        decoder=decoder,
+        qw_teacher_source="current_actor",
+    )
+    populate_branch(model, BranchMode.BASE, rows=2)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+
+    th.manual_seed(31415)
+    with th.no_grad():
+        expected_scaled, _ = model.actor.action_log_prob(sample.observations)
+        expected_decoder = model._unscale_noise(expected_scaled)
+
+    th.manual_seed(31415)
+    actual_scaled = _capture_qw_noise(model, sample)
+
+    assert decoder.last_noise_decoder_input is not None
+    assert decoder.last_noise_decoder_input.shape == (2, 2, 2)
+    th.testing.assert_close(
+        decoder.last_noise_decoder_input, expected_decoder, rtol=0, atol=0
+    )
+    th.testing.assert_close(actual_scaled, expected_scaled, rtol=0, atol=0)
+
+
+def test_qw_teacher_gaussian_k1_uses_one_standard_normal_per_replay_state():
+    """Gaussian-K1 must match DSRL's broad decoder-noise source exactly.
+
+    Resetting the RNG before the real loss also catches an accidental actor
+    sample before ``randn``: that extra draw would change this exact tensor.
+    """
+    decoder = _RecordingChunkDecoder()
+    model, _ = make_model(
+        decoder=decoder,
+        qw_teacher_source="gaussian",
+    )
+    populate_branch(model, BranchMode.BASE, rows=2)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+
+    # Exercise the non-trivial DSRL coordinate transform: decoder Gaussian
+    # lives in [-2.5, 2.5] action coordinates while QW consumes scaled noise.
+    # Replace rather than mutate these tensors in place: some SB3 spaces are
+    # backed by shared NumPy storage, and fill_ would leak bounds into later
+    # tests that reuse TinyChunkEnv's class-level Box.
+    model._noise_action_low_tensor = th.full_like(
+        model._noise_action_low_tensor, -2.5
+    )
+    model._noise_action_high_tensor = th.full_like(
+        model._noise_action_high_tensor, 2.5
+    )
+    th.manual_seed(27182)
+    expected_decoder = th.randn(2, 2, 2)
+    expected_scaled = expected_decoder.reshape(2, 4) / 2.5
+
+    th.manual_seed(27182)
+    actual_scaled = _capture_qw_noise(model, sample)
+
+    assert decoder.last_noise_decoder_input is not None
+    # K=1 means no state expansion: B replay states produce exactly B pairs.
+    assert decoder.last_noise_decoder_input.shape[0] == sample.observations.shape[0]
+    th.testing.assert_close(
+        decoder.last_noise_decoder_input, expected_decoder, rtol=0, atol=0
+    )
+    th.testing.assert_close(actual_scaled, expected_scaled, rtol=0, atol=1e-7)
+
+
+def test_qw_multiw_contract_rejects_invalid_or_actor_local_settings():
+    with pytest.raises(ValueError, match="qw_candidates_per_state"):
+        make_model(qw_candidates_per_state=0)
+    with pytest.raises(ValueError, match="qw_state_batch_size"):
+        make_model(qw_state_batch_size=True)
+    with pytest.raises(ValueError, match="qw_teacher_microbatch_size"):
+        make_model(qw_teacher_microbatch_size=0)
+    with pytest.raises(ValueError, match="requires.*gaussian"):
+        make_model(
+            qw_teacher_source="current_actor",
+            qw_candidates_per_state=4,
+        )
+
+
+def test_qw_gaussian_multiw_expands_each_state_and_microbatches_teacher():
+    decoder = _CountingChunkDecoder()
+    model, _ = make_model(
+        decoder=decoder,
+        qw_teacher_source="gaussian",
+        qw_candidates_per_state=4,
+        qw_state_batch_size=2,
+        qw_teacher_microbatch_size=3,
+    )
+    populate_branch(model, BranchMode.BASE, rows=2)
+    sample = model.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+
+    before_steps = model.qw_base_optimizer_steps
+    loss, mse = model._update_qw_once(sample)
+
+    assert model.qw_teacher_queries_per_update == 8
+    assert decoder.batch_sizes == [3, 3, 2]
+    assert model.qw_base_optimizer_steps == before_steps + 1
+    assert np.isfinite(loss)
+    assert np.isfinite(mse)
+
+
+def test_qw_k1_defaults_preserve_global_batch_contract():
+    model, _ = make_model(qw_teacher_source="gaussian")
+    assert model.qw_candidates_per_state == 1
+    assert model.qw_state_batch_size == model.batch_size
+    assert model.qw_teacher_microbatch_size == model.batch_size
+    assert model.qw_teacher_queries_per_update == model.batch_size
+
+
+def test_qw_multiw_microbatching_matches_unchunked_optimizer_step():
+    common = dict(
+        qw_teacher_source="gaussian",
+        qw_candidates_per_state=4,
+        qw_state_batch_size=2,
+    )
+    unchunked, _ = make_model(qw_teacher_microbatch_size=8, **common)
+    chunked, _ = make_model(qw_teacher_microbatch_size=3, **common)
+    chunked.qw_base.load_state_dict(unchunked.qw_base.state_dict())
+    chunked.qa_base_target.load_state_dict(unchunked.qa_base_target.state_dict())
+    chunked.qw_base_optimizer.load_state_dict(
+        unchunked.qw_base_optimizer.state_dict()
+    )
+    populate_branch(unchunked, BranchMode.BASE, rows=2)
+    sample = unchunked.replay_buffer.sample_branch(BranchMode.BASE, 2, env=None)
+
+    th.manual_seed(4242)
+    full_loss, full_mse = unchunked._update_qw_once(sample)
+    th.manual_seed(4242)
+    split_loss, split_mse = chunked._update_qw_once(sample)
+
+    assert split_loss == pytest.approx(full_loss, rel=1e-6, abs=1e-6)
+    assert split_mse == pytest.approx(full_mse, rel=1e-6, abs=1e-6)
+    for full_parameter, split_parameter in zip(
+        unchunked.qw_base.parameters(), chunked.qw_base.parameters()
+    ):
+        th.testing.assert_close(
+            split_parameter,
+            full_parameter,
+            rtol=1e-6,
+            atol=1e-7,
+        )

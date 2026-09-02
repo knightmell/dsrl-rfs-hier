@@ -1,0 +1,16 @@
+defaults:
+  - p6_walker_base_diag_gaussian_k4_b256_noclip_100k
+  - _self_
+
+name: walker_k4_additive_res_750k_${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_additive_res
+  rfs_hier_phase_b_steps: 500000
+  rfs_hier_phase_r_steps: 2000000
+
+p6:
+  stop_after_chunk_transitions: 750000
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 250000

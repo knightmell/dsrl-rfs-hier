@@ -1,0 +1,729 @@
+{
+  "batch_candidates": 2048,
+  "checkpoints": [
+    {
+      "actual_query_counts": {
+        "ddim_decode_calls": 48,
+        "ddim_decode_candidates": 98304,
+        "environment_steps": 0,
+        "optimizer_steps": 0,
+        "qa_target_calls": 48,
+        "qa_target_candidates": 98304,
+        "qw_backward_calls": 0,
+        "qw_student_calls": 48,
+        "qw_student_candidates": 98304
+      },
+      "checkpoint": "/home/mrf/dsrl/logs/p6/diagnostic_base_gpu_fresh_frozen_ddim_dsrl_na_rfs_hier_2500000chunks_walker_seed1_500k/checkpoints/model_000000100000.zip",
+      "checkpoint_sha256": "a82b3579ae78b7fe91466273e63ba6a6118341d39aeb35191dc89a7f79f42ef4",
+      "checkpoint_step": 100000,
+      "current_pool_sha256": "e0fd9dda9ea2201bf3375d008f58e89e7ec6838e0f6b01700ccd22f78053013b",
+      "elapsed_seconds": 6.220443893689662,
+      "evaluation_file": "/home/mrf/dsrl/artifacts/wbsd/G1/g1_full_v2_walker_seed1_100_300_500k/workers/seed_1101/evaluations/checkpoint_000000100000.npz",
+      "evaluation_file_sha256": "ab212b27d51ae70257d9a9c1d59d0f58d73b22c03a65960864e00f7c082ab8a5",
+      "finite_metrics": true,
+      "g0_pool": "/home/mrf/dsrl/artifacts/wbsd/G0/g0_matrix_walker_seed1_100_300_500k/pools/checkpoint_000000100000_proposal_1101.npz",
+      "g0_pool_sha256": "d9536230ce192fb80695ebeb0bc88866cde075e599b84f26b09e5a62cdd3b560",
+      "logical_queries_per_primary_method": 32768,
+      "mix_pool_sha256": "7e8bd01c34afc06b003691f9ee213874aa1ac514735f039ce6331d32e8a368d0",
+      "mix_source_schedule": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "module_hashes_after": {
+        "actor": "391ea1955387c5291565fe2a0230412665bbab319b85d147c6ebd59e56e6dd83",
+        "critic": "783695107901206fe602b4d89839a53b1c9a8305451bec4833ecf57440baadab",
+        "critic_noise": "6889d2cd3b7c003391aa9f82498539499a409bffc2ec9501bf0aed6c6cc32443",
+        "critic_target": "6de05f5d28a6e62d318f77fee7090eb0166f40e5349eeaeb330e4a5aff93bedc",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "2027ebf1d5f96385691150bd43a91eea5604042c2180c88160dd7c7fee2e5594",
+        "qa_joint": "ed3e3d9453a6e60267497356dc043af32a2b42d7c27304b2437a88f5b0cf4d17",
+        "qa_joint_target": "eed49e08888328a616f0e92a935e9b8d94b24733209480404520f698af7a724c",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_before": {
+        "actor": "391ea1955387c5291565fe2a0230412665bbab319b85d147c6ebd59e56e6dd83",
+        "critic": "783695107901206fe602b4d89839a53b1c9a8305451bec4833ecf57440baadab",
+        "critic_noise": "6889d2cd3b7c003391aa9f82498539499a409bffc2ec9501bf0aed6c6cc32443",
+        "critic_target": "6de05f5d28a6e62d318f77fee7090eb0166f40e5349eeaeb330e4a5aff93bedc",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "2027ebf1d5f96385691150bd43a91eea5604042c2180c88160dd7c7fee2e5594",
+        "qa_joint": "ed3e3d9453a6e60267497356dc043af32a2b42d7c27304b2437a88f5b0cf4d17",
+        "qa_joint_target": "eed49e08888328a616f0e92a935e9b8d94b24733209480404520f698af7a724c",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_equal": true,
+      "peak_cuda_memory_bytes": 930846720,
+      "prior_pool_sha256": "b8b58d6953992e90c55cfb3709b8155a887fa56377f0f299ed2f6a4c5ec24cc9",
+      "source_query_counts": {
+        "g_current": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_mix": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_prior_exact": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        }
+      },
+      "source_seconds": {
+        "g_current": 0.24362310208380222,
+        "g_mix": 0.2165491650812328,
+        "g_prior_exact": 0.19757827231660485
+      },
+      "training_counters_after": {
+        "_n_updates": 800000,
+        "noise_actor_optimizer_steps": 200000,
+        "num_timesteps": 100000,
+        "qa_base_optimizer_steps": 200000,
+        "qa_joint_optimizer_steps": 100000,
+        "qw_base_optimizer_steps": 100000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_before": {
+        "_n_updates": 800000,
+        "noise_actor_optimizer_steps": 200000,
+        "num_timesteps": 100000,
+        "qa_base_optimizer_steps": 200000,
+        "qa_joint_optimizer_steps": 100000,
+        "qw_base_optimizer_steps": 100000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        }
+      ]
+    },
+    {
+      "actual_query_counts": {
+        "ddim_decode_calls": 48,
+        "ddim_decode_candidates": 98304,
+        "environment_steps": 0,
+        "optimizer_steps": 0,
+        "qa_target_calls": 48,
+        "qa_target_candidates": 98304,
+        "qw_backward_calls": 0,
+        "qw_student_calls": 48,
+        "qw_student_candidates": 98304
+      },
+      "checkpoint": "/home/mrf/dsrl/logs/p6/diagnostic_base_gpu_fresh_frozen_ddim_dsrl_na_rfs_hier_2500000chunks_walker_seed1_500k/checkpoints/model_000000300000.zip",
+      "checkpoint_sha256": "4cb3c157702e28bd2e462df0a07b687977ef8f09ebf4e91c366617d512fa2f82",
+      "checkpoint_step": 300000,
+      "current_pool_sha256": "aa52d51f41c29eb2a4100747be246086d3513e8caafe11ef04919bc8fe1d40b1",
+      "elapsed_seconds": 4.437440327368677,
+      "evaluation_file": "/home/mrf/dsrl/artifacts/wbsd/G1/g1_full_v2_walker_seed1_100_300_500k/workers/seed_1101/evaluations/checkpoint_000000300000.npz",
+      "evaluation_file_sha256": "2bd162c1e5eccb47162e7ccf3689f8572905b23f3c0f14700a1048dcdb561c1e",
+      "finite_metrics": true,
+      "g0_pool": "/home/mrf/dsrl/artifacts/wbsd/G0/g0_matrix_walker_seed1_100_300_500k/pools/checkpoint_000000300000_proposal_1101.npz",
+      "g0_pool_sha256": "fdbacf45801d282f82017f417b02e6850e69e7d08f673f22ad1f37c4403bea0a",
+      "logical_queries_per_primary_method": 32768,
+      "mix_pool_sha256": "fb3ee4dae4250417f681b1b76090ada14f885849941b24f853171ab10f4773b1",
+      "mix_source_schedule": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "module_hashes_after": {
+        "actor": "80952a7218a50c45a81d539a2dc958980c0f4f8e2e70f22ff542331515153cef",
+        "critic": "490f4738adeb041d154d2b2d76bd04de533912158caa2b61575ed46700230a0c",
+        "critic_noise": "a6da28873cd1638fd468790d31b0180c205d643d40f3067907a60d5cc3c9ed9b",
+        "critic_target": "51150664c2c3935ac50ff522ec42afb1cabc8c1bdd360e21b71bdef41522cbe7",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "d2e2288ed5507bdd91aea3336d03a48eb1ed2c4919dd529e668e3ef5d195e276",
+        "qa_joint": "8db8e41c1eb61ac4782dd48ca5c17ab4575f2725ea2e43fa9759128057a038fc",
+        "qa_joint_target": "88d7f2262bddc2025f440e09f266c0bd03d6fd4b565ec20e83afa6d5f325f3af",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_before": {
+        "actor": "80952a7218a50c45a81d539a2dc958980c0f4f8e2e70f22ff542331515153cef",
+        "critic": "490f4738adeb041d154d2b2d76bd04de533912158caa2b61575ed46700230a0c",
+        "critic_noise": "a6da28873cd1638fd468790d31b0180c205d643d40f3067907a60d5cc3c9ed9b",
+        "critic_target": "51150664c2c3935ac50ff522ec42afb1cabc8c1bdd360e21b71bdef41522cbe7",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "d2e2288ed5507bdd91aea3336d03a48eb1ed2c4919dd529e668e3ef5d195e276",
+        "qa_joint": "8db8e41c1eb61ac4782dd48ca5c17ab4575f2725ea2e43fa9759128057a038fc",
+        "qa_joint_target": "88d7f2262bddc2025f440e09f266c0bd03d6fd4b565ec20e83afa6d5f325f3af",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_equal": true,
+      "peak_cuda_memory_bytes": 1817462272,
+      "prior_pool_sha256": "b8b58d6953992e90c55cfb3709b8155a887fa56377f0f299ed2f6a4c5ec24cc9",
+      "source_query_counts": {
+        "g_current": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_mix": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_prior_exact": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        }
+      },
+      "source_seconds": {
+        "g_current": 0.20727026322856545,
+        "g_mix": 0.23978487169370055,
+        "g_prior_exact": 0.2619448499754071
+      },
+      "training_counters_after": {
+        "_n_updates": 2400000,
+        "noise_actor_optimizer_steps": 600000,
+        "num_timesteps": 300000,
+        "qa_base_optimizer_steps": 600000,
+        "qa_joint_optimizer_steps": 300000,
+        "qw_base_optimizer_steps": 300000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_before": {
+        "_n_updates": 2400000,
+        "noise_actor_optimizer_steps": 600000,
+        "num_timesteps": 300000,
+        "qa_base_optimizer_steps": 600000,
+        "qa_joint_optimizer_steps": 300000,
+        "qw_base_optimizer_steps": 300000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        }
+      ]
+    },
+    {
+      "actual_query_counts": {
+        "ddim_decode_calls": 48,
+        "ddim_decode_candidates": 98304,
+        "environment_steps": 0,
+        "optimizer_steps": 0,
+        "qa_target_calls": 48,
+        "qa_target_candidates": 98304,
+        "qw_backward_calls": 0,
+        "qw_student_calls": 48,
+        "qw_student_candidates": 98304
+      },
+      "checkpoint": "/home/mrf/dsrl/logs/p6/diagnostic_base_gpu_fresh_frozen_ddim_dsrl_na_rfs_hier_2500000chunks_walker_seed1_500k/checkpoints/model_000000500000.zip",
+      "checkpoint_sha256": "160424776a8eae537c5c8846442babe31c3e4bd9d8f594612ab5bc6a53048d3d",
+      "checkpoint_step": 500000,
+      "current_pool_sha256": "8ecf08c0fbdb1854fd8f9f59c2a33ac91670981ed76f194b1863ea60a6190aae",
+      "elapsed_seconds": 4.542213405948132,
+      "evaluation_file": "/home/mrf/dsrl/artifacts/wbsd/G1/g1_full_v2_walker_seed1_100_300_500k/workers/seed_1101/evaluations/checkpoint_000000500000.npz",
+      "evaluation_file_sha256": "dc09b6798487b575146bec0c467f2a03dd8fa71f537f960e6e12e8aa21a3f28a",
+      "finite_metrics": true,
+      "g0_pool": "/home/mrf/dsrl/artifacts/wbsd/G0/g0_matrix_walker_seed1_100_300_500k/pools/checkpoint_000000500000_proposal_1101.npz",
+      "g0_pool_sha256": "c76bb51bb84e90e63ce0234cff24b0b45b8760b6a818991fcd914adc3a4d42cf",
+      "logical_queries_per_primary_method": 32768,
+      "mix_pool_sha256": "a066fff9793162cc51c2d23c53b94b73514278fc6c53b2c818346bfb6279c570",
+      "mix_source_schedule": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "module_hashes_after": {
+        "actor": "635c813d95fc41df705d53398abd7eca4c91069bd44b43b1af58b89e8671bdfd",
+        "critic": "23215b2bf9d1cde4d8d54a31c8a57ff616819c29ad8bb92f859b0f214a01d92b",
+        "critic_noise": "272c31b5027b88e9910a9bf61869068c1008b5a70e077155ca5edec39e483b56",
+        "critic_target": "c374cbab30c5c4347e74865d42567d9cba1dec60bc33f1484fef594105bce467",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "41df46808a62eb54f6481faa6972afdd4e7b9195f20c7b9602ca59cb98636f2e",
+        "qa_joint": "85514cb70588c776b811e2de3415296fa870ac46af8d13427ba7c1c89b803796",
+        "qa_joint_target": "127db28d98f0c3e517a57bab9b8316175d91308501a2a7179fa3b41b49a1fa83",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_before": {
+        "actor": "635c813d95fc41df705d53398abd7eca4c91069bd44b43b1af58b89e8671bdfd",
+        "critic": "23215b2bf9d1cde4d8d54a31c8a57ff616819c29ad8bb92f859b0f214a01d92b",
+        "critic_noise": "272c31b5027b88e9910a9bf61869068c1008b5a70e077155ca5edec39e483b56",
+        "critic_target": "c374cbab30c5c4347e74865d42567d9cba1dec60bc33f1484fef594105bce467",
+        "diffusion_policy.base_policy": "da14cf26243add44628c3aec589863df9e3f823d8aab804b751a8d8535d378ac",
+        "policy": "41df46808a62eb54f6481faa6972afdd4e7b9195f20c7b9602ca59cb98636f2e",
+        "qa_joint": "85514cb70588c776b811e2de3415296fa870ac46af8d13427ba7c1c89b803796",
+        "qa_joint_target": "127db28d98f0c3e517a57bab9b8316175d91308501a2a7179fa3b41b49a1fa83",
+        "reference_noise_actor": "12a5089fe67b07af922a660bed93999aae5c9590be98515e2abc4546cc80380c",
+        "residual_actor": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008",
+        "residual_actor_target": "69a94ed9fcc8b88fcf76a90d038d6609962a8a8a0650deee96064a54921fb008"
+      },
+      "module_hashes_equal": true,
+      "peak_cuda_memory_bytes": 2704077824,
+      "prior_pool_sha256": "b8b58d6953992e90c55cfb3709b8155a887fa56377f0f299ed2f6a4c5ec24cc9",
+      "source_query_counts": {
+        "g_current": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_mix": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        },
+        "g_prior_exact": {
+          "ddim_decode_calls": 16,
+          "ddim_decode_candidates": 32768,
+          "qa_target_calls": 16,
+          "qa_target_candidates": 32768,
+          "qw_student_calls": 16,
+          "qw_student_candidates": 32768
+        }
+      },
+      "source_seconds": {
+        "g_current": 0.2588185742497444,
+        "g_mix": 0.1993773146532476,
+        "g_prior_exact": 0.23500127205625176
+      },
+      "training_counters_after": {
+        "_n_updates": 4000000,
+        "noise_actor_optimizer_steps": 1000000,
+        "num_timesteps": 500000,
+        "qa_base_optimizer_steps": 1000000,
+        "qa_joint_optimizer_steps": 500000,
+        "qw_base_optimizer_steps": 500000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_before": {
+        "_n_updates": 4000000,
+        "noise_actor_optimizer_steps": 1000000,
+        "num_timesteps": 500000,
+        "qa_base_optimizer_steps": 1000000,
+        "qa_joint_optimizer_steps": 500000,
+        "qw_base_optimizer_steps": 500000,
+        "residual_actor_optimizer_steps": 0
+      },
+      "training_counters_equal": true,
+      "warnings": [
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "UserWarning",
+          "message": "Could not deserialize object lr_schedule. Consider using `custom_objects` argument to replace this object.\nException: code() argument 13 must be str, not int"
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        },
+        {
+          "category": "DeprecationWarning",
+          "message": "numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer."
+        }
+      ]
+    }
+  ],
+  "command": [
+    "wbsd_g1.py",
+    "worker",
+    "--device",
+    "cuda:0",
+    "--batch-candidates",
+    "2048",
+    "--proposal-seed",
+    "1101",
+    "--output",
+    "artifacts/wbsd/G1/g1_full_v2_walker_seed1_100_300_500k/workers/seed_1101"
+  ],
+  "device": "cuda:0",
+  "elapsed_seconds": 15.661109413020313,
+  "finished_at_utc": "2026-08-29T08:18:57.667472+00:00",
+  "full_contract": true,
+  "g0_state_bank_sha256": "ce9b36c6e08ae886b0a00ae80e0f8b8c2d8de4c749cb39dc3929daf66a916f9e",
+  "g0_state_ids_sha256": "b3da016722d9659ca1406b512c68a7f4562fa13695e524997a96d22d4d33b6a4",
+  "g0_summary": "/home/mrf/dsrl/artifacts/wbsd/G0/g0_matrix_walker_seed1_100_300_500k/summary.json",
+  "g0_summary_sha256": "ce09ff67f82d943bf218690746ead7e70e07134af4c5b52c4187beb25e3a53f0",
+  "gate": "G1",
+  "git": {
+    "commit": "641c41692306c8072a2acdce9df79c08a39a7f0a",
+    "status_porcelain": "M docs/rfs_hier_v1/STAGED_DELIVERY_PLAN.md\n M p6_preflight.py\n M p6_train.py\n M stable-baselines3/stable_baselines3/dsrl/hierarchical_rfs_dsrl.py\n M stable-baselines3/tests/test_dsrl_rfs_hier_phase6.py\n M tests/test_p6_preflight.py\n?? artifacts/\n?? cfg/gym/p6_halfcheetah_fresh_2p5m_joint_credit.yaml\n?? cfg/gym/p6_hopper_fresh_2p5m_joint_credit.yaml\n?? cfg/gym/p6_walker_fresh_2p5m_joint_credit.yaml\n?? docs/rfs_hier_v1/COTRAIN_2P5M_RESULTS.md\n?? docs/rfs_hier_v1/WALKER_BASE_SUPPORT_GATED_PLAN.md\n?? docs/rfs_hier_v1/figures/\n?? tests/test_wbsd_g1.py\n?? tests/test_wbsd_probe.py\n?? wbsd_g1.py\n?? wbsd_probe.py",
+    "tracked_diff_sha256": "a043f1bfee860dc35d367cbe7565729d2d839fdcba3544fbd9b0404457189b64"
+  },
+  "global_rng_restored": true,
+  "material_passport": {
+    "origin_mode": "run",
+    "origin_skill": "academic-research-suite/experiment-agent",
+    "verification_status": "EXECUTED_G1_WORKER",
+    "version_label": "wbsd_g1_worker_v1"
+  },
+  "metric_rows": 43008,
+  "metrics_file": "/home/mrf/dsrl/artifacts/wbsd/G1/g1_full_v2_walker_seed1_100_300_500k/workers/seed_1101/state_metrics.csv",
+  "metrics_file_sha256": "eac2416bace1bbd63d02003ea1c3a28c27eb09428c7b557d8a8e1a99c7e49917",
+  "pool_size": 64,
+  "prefixes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "proposal_seed": 1101,
+  "query_contract": {
+    "backward_calls": 0,
+    "environment_steps": 0,
+    "methods": [
+      "g_current",
+      "g_prior_exact",
+      "g_mix"
+    ],
+    "optimizer_steps": 0
+  },
+  "runtime": {
+    "cuda_available": true,
+    "platform": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+    "python": "3.13.5",
+    "torch": "2.7.0+cu128"
+  },
+  "sampling_contract": {
+    "common_random_numbers_from_g0": true,
+    "g_current": "current actor pre-tanh Gaussian transformed by its normal tanh",
+    "g_mix": "slot 0 current; odd slots tanh(exact prior); even slots current",
+    "g_prior_exact": "unbounded standard Gaussian exactly mapped by DSRL policy.scale_action",
+    "mix_prior_envelope_transform": "tanh",
+    "nested_prefixes": true,
+    "primary_view": "shared current-policy slot-0 anchor plus K-1 named-family candidates",
+    "tanh_saturation_accounting": "only coordinates produced by a tanh transform; exact-prior coordinates are tracked by boundary/out-of-envelope metrics instead"
+  },
+  "source_hashes": {
+    "docs/rfs_hier_v1/WALKER_BASE_SUPPORT_GATED_PLAN.md": "b8d529b96ed1eff1b374dcf2883313eb9bd6b00d37158d3f550a5cf25e8fa0ac",
+    "tests/test_wbsd_g1.py": "4540cfa6747877a646245fead624b373de7557d34c4496e1e950cc6cc5c16c89",
+    "tests/test_wbsd_probe.py": "b5e897204cdfbe07e0a79b651280cfa33f96e0cc9bf550caa1be8f1a11010582",
+    "wbsd_g1.py": "17ade3c61a293fcaf172abf541798efe8bad497e86e71f13d1f52ec7ad7bef9e",
+    "wbsd_probe.py": "cc5b81579d48f15a5b841f82709a853d1ffac6243d4a4988e1efd65ec48d866b"
+  },
+  "started_at_utc": "2026-08-29T08:18:42.026953+00:00",
+  "state_count": 512,
+  "state_ids_sha256": "9b908ec784e8220772de71705d65128612b6c4c573292d9ed4c9375618aa183d",
+  "statistical_contract": {
+    "primary_unit": "state",
+    "proposal_seeds": "repeated measurements, not independent states"
+  },
+  "status": "COMPLETE"
+}

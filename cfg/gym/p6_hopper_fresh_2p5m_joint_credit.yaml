@@ -1,0 +1,15 @@
+# E4 joint-credit baseline (hopper): identical to the cotrain run except that
+# in the RESIDUAL phase the QW supervised teacher switches from
+# QA_base_target(s, a_base) to QA_joint_target(s, compose(a_base, residual_current))
+# so the noise actor and the residual actor SHARE the full hierarchy value.
+# Phase B is bit-identical to VS-Hier (QA_base teacher); QA_base keeps
+# training and serves only base-only evaluation/diagnostics.
+
+defaults:
+  - p6_hopper_fresh_2p5m_cotrain
+  - _self_
+
+name: fresh_frozen_ddim_joint_credit_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_qw_teacher_joint_credit: true

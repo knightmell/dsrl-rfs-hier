@@ -1,0 +1,16 @@
+defaults:
+  - p6_walker_fresh_2p5m_cotrain
+  - _self_
+
+# Paired source-only Phase-B diagnosis: all resolved fields match Current-K1
+# except this QW teacher proposal source and the collision-free run path.
+name: base_diag_qw_gaussian_k1_pilot250k_${p6.init_checkpoint_id}_${env_name}_${p6.algorithm_label}_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_qw_teacher_source: gaussian
+
+p6:
+  stop_after_chunk_transitions: 250000
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 250000

@@ -51,6 +51,11 @@ from stable_baselines3.sac.policies import SACPolicy
 
 
 ARCHITECTURE_VERSION = "dsrl_na_rfs_hier_three_critic_v1"
+QW_TEACHER_SOURCE_CURRENT_ACTOR = "current_actor"
+QW_TEACHER_SOURCE_GAUSSIAN = "gaussian"
+QW_TEACHER_SOURCES = frozenset(
+    {QW_TEACHER_SOURCE_CURRENT_ACTOR, QW_TEACHER_SOURCE_GAUSSIAN}
+)
 DEPRECATED_CHECKPOINT_MESSAGE = (
     "This checkpoint uses the deprecated joint QA/QM hierarchy. "
     "Start three-critic Core V1 from the corresponding legacy DSRL-NA checkpoint."
@@ -120,6 +125,29 @@ def _fresh_episode_stat_window() -> dict[str, float]:
         "count": 0.0,
         "early_fall_count": 0.0,
     }
+
+
+def _normalize_closed_episode_stats(
+    restored: Optional[Mapping[Any, Any]],
+) -> dict[int, dict[str, float]]:
+    """Restore integer branch keys after SB3's JSON data round-trip.
+
+    SB3 serializes mapping keys through JSON, which converts the integer
+    ``BranchMode`` keys to strings.  Older compatibility bundles may omit the
+    all-zero diagnostic window entirely.  Both forms restore to the same
+    complete, integer-keyed runtime state here.
+    """
+    source = restored if isinstance(restored, Mapping) else {}
+    normalized: dict[int, dict[str, float]] = {}
+    for branch in (int(BranchMode.BASE), int(BranchMode.JOINT)):
+        branch_source = source.get(branch, source.get(str(branch), {}))
+        window = _fresh_episode_stat_window()
+        if isinstance(branch_source, Mapping):
+            for key in window:
+                if key in branch_source:
+                    window[key] = float(branch_source[key])
+        normalized[branch] = window
+    return normalized
 
 
 def _mean_and_std(values: Sequence[float]) -> tuple[float, float]:
@@ -441,6 +469,24 @@ class HierarchicalRFSDSRL(DSRL):
         cross_lane_ratio: float = 0.0,
         qa_base_cross_lane: bool = False,
         residual_exploration_std: float = 0.0,
+        # E4 joint-credit baseline: in the RESIDUAL phase the QW supervised
+        # teacher switches from QA_base_target(s, a_base) to
+        # QA_joint_target(s, compose(a_base, residual_current(...))) so the
+        # noise actor shares the full hierarchy value with the residual actor
+        # (QA_joint -> QW -> noise actor AND QA_joint -> residual actor).
+        # BASE phase is bit-identical to VS-Hier (teacher stays QA_base).
+        qw_teacher_joint_credit: bool = False,
+        # Base-diagnosis switch.  K is deliberately fixed at one: only the
+        # per-state QW teacher proposal source changes in this experiment.
+        qw_teacher_source: str = QW_TEACHER_SOURCE_CURRENT_ACTOR,
+        # Gaussian multi-w diagnosis.  K=1 with omitted batch/microbatch
+        # values resolves to the historical global batch path exactly.
+        qw_candidates_per_state: int = 1,
+        qw_state_batch_size: Optional[int] = None,
+        qw_teacher_microbatch_size: Optional[int] = None,
+        # Base-diagnosis switch.  Default True preserves Core V1 exactly;
+        # False removes only the noise-actor global-norm clipping operation.
+        noise_actor_gradient_clipping: bool = True,
         noise_gradient_max_norm: float = 1.0,
         residual_gradient_max_norm: float = 1.0,
         lane_seed: Optional[int] = None,
@@ -511,6 +557,48 @@ class HierarchicalRFSDSRL(DSRL):
             raise ValueError("cross_lane_ratio must be finite and lie in [0, 1)")
         if not np.isfinite(residual_exploration_std) or residual_exploration_std < 0:
             raise ValueError("residual_exploration_std must be finite and non-negative")
+        qw_teacher_source = str(qw_teacher_source).strip()
+        if qw_teacher_source not in QW_TEACHER_SOURCES:
+            raise ValueError(
+                "qw_teacher_source must be one of "
+                f"{sorted(QW_TEACHER_SOURCES)}, got {qw_teacher_source!r}"
+            )
+        multiw_values = {
+            "qw_candidates_per_state": qw_candidates_per_state,
+            "qw_state_batch_size": (
+                batch_size if qw_state_batch_size is None else qw_state_batch_size
+            ),
+        }
+        for name, value in multiw_values.items():
+            if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
+                raise ValueError(f"{name} must be a positive integer")
+            if int(value) <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+        qw_candidates_per_state = int(multiw_values["qw_candidates_per_state"])
+        qw_state_batch_size = int(multiw_values["qw_state_batch_size"])
+        qw_teacher_queries_per_update = (
+            qw_candidates_per_state * qw_state_batch_size
+        )
+        if qw_teacher_microbatch_size is None:
+            qw_teacher_microbatch_size = qw_teacher_queries_per_update
+        if (
+            isinstance(qw_teacher_microbatch_size, bool)
+            or not isinstance(qw_teacher_microbatch_size, (int, np.integer))
+            or int(qw_teacher_microbatch_size) <= 0
+        ):
+            raise ValueError("qw_teacher_microbatch_size must be a positive integer")
+        qw_teacher_microbatch_size = int(qw_teacher_microbatch_size)
+        if (
+            qw_candidates_per_state > 1
+            and qw_teacher_source != QW_TEACHER_SOURCE_GAUSSIAN
+        ):
+            raise ValueError(
+                "qw_candidates_per_state > 1 requires qw_teacher_source='gaussian'"
+            )
+        if qw_candidates_per_state > 1 and enable_qw_ranking:
+            raise ValueError(
+                "qw_candidates_per_state > 1 requires enable_qw_ranking=False"
+            )
         for name, value in (
             ("noise_gradient_max_norm", noise_gradient_max_norm),
             ("residual_gradient_max_norm", residual_gradient_max_norm),
@@ -565,6 +653,15 @@ class HierarchicalRFSDSRL(DSRL):
         self.cross_lane_ratio = float(cross_lane_ratio)
         self.qa_base_cross_lane = bool(qa_base_cross_lane)
         self.residual_exploration_std = float(residual_exploration_std)
+        self.qw_teacher_joint_credit = bool(qw_teacher_joint_credit)
+        self.qw_teacher_source = qw_teacher_source
+        self.qw_candidates_per_state = qw_candidates_per_state
+        self.qw_state_batch_size = qw_state_batch_size
+        self.qw_teacher_microbatch_size = qw_teacher_microbatch_size
+        self.qw_teacher_queries_per_update = qw_teacher_queries_per_update
+        self.noise_actor_gradient_clipping = bool(
+            noise_actor_gradient_clipping
+        )
         self.noise_gradient_max_norm = float(noise_gradient_max_norm)
         self.residual_gradient_max_norm = float(residual_gradient_max_norm)
         self.lane_seed = int(lane_seed if lane_seed is not None else (seed or 0) + 17_071)
@@ -737,11 +834,9 @@ class HierarchicalRFSDSRL(DSRL):
             self._episode_length_accum = np.zeros(self.n_envs, dtype=np.int64)
         if not hasattr(self, "_episode_branch_accum"):
             self._episode_branch_accum = np.full(self.n_envs, -1, dtype=np.int8)
-        if not hasattr(self, "_closed_episode_stats"):
-            self._closed_episode_stats = {
-                int(BranchMode.BASE): _fresh_episode_stat_window(),
-                int(BranchMode.JOINT): _fresh_episode_stat_window(),
-            }
+        self._closed_episode_stats = _normalize_closed_episode_stats(
+            getattr(self, "_closed_episode_stats", None)
+        )
         for name in (
             "_active_branch_mode",
             "_active_episode_id",
@@ -953,6 +1048,19 @@ class HierarchicalRFSDSRL(DSRL):
         high = self._noise_action_high_tensor.to(dtype=scaled.dtype)
         decoder = low + 0.5 * (scaled + 1.0) * (high - low)
         return decoder.reshape(-1, self.diffusion_act_chunk, self.diffusion_act_dim).detach()
+
+    def _scale_noise_decoder_input(self, noise_decoder_input: th.Tensor) -> th.Tensor:
+        expected = (
+            noise_decoder_input.shape[0],
+            self.diffusion_act_chunk,
+            self.diffusion_act_dim,
+        )
+        if tuple(noise_decoder_input.shape) != expected:
+            raise ValueError("noise_decoder_input has an incompatible shape")
+        decoder = noise_decoder_input.detach().reshape(-1, self.action_dim_flat)
+        low = self._noise_action_low_tensor.to(dtype=decoder.dtype)
+        high = self._noise_action_high_tensor.to(dtype=decoder.dtype)
+        return (2.0 * ((decoder - low) / (high - low)) - 1.0).detach()
 
     @th.no_grad()
     def _decode_noise_decoder_input(
@@ -1608,17 +1716,59 @@ class HierarchicalRFSDSRL(DSRL):
         self, replay_data: HierarchyReplayBufferSamples
     ) -> tuple[th.Tensor, tuple[th.Tensor, ...], tuple[th.Tensor, ...]]:
         with th.no_grad():
-            noise, _ = self.actor.action_log_prob(replay_data.observations)
-            decoder = self._unscale_noise(noise)
+            if self.qw_teacher_source == QW_TEACHER_SOURCE_CURRENT_ACTOR:
+                # Preserve the pre-diagnosis path and RNG order exactly.
+                noise, _ = self.actor.action_log_prob(replay_data.observations)
+                decoder = self._unscale_noise(noise)
+            else:
+                # Exact DSRL source semantics: one independent standard
+                # Gaussian decoder noise per replay state (K=1), then map it
+                # into the scaled coordinates consumed by QW(s, w).
+                decoder = th.randn(
+                    replay_data.observations.shape[0],
+                    self.diffusion_act_chunk,
+                    self.diffusion_act_dim,
+                ).to(self.device)
+                noise = self._scale_noise_decoder_input(decoder)
             base = self._decode_noise_decoder_input(
                 replay_data.observations, decoder
             )
-            teacher = tuple(
-                value.detach()
-                for value in self.qa_base_target(
-                    replay_data.observations, base
+            if self.qw_teacher_joint_credit and (
+                self.hierarchy_schedule.phase_at(self.num_timesteps)
+                == HierarchyPhase.RESIDUAL
+            ):
+                # E4 joint-credit baseline (RESIDUAL phase only): the noise
+                # actor's supervised teacher becomes the joint hierarchy value
+                # at the CURRENT composed action -- a_exec = compose(a_base
+                # replay, current residual at (s, replay noise, replay base)).
+                # Both actor heads then share the full QA_joint value; the
+                # BASE phase stays bit-identical to VS-Hier (QA_base teacher).
+                # Teacher path is fully detached (no gradients flow into the
+                # residual actor through QW's loss).
+                logits = self.residual_actor.forward_pre_tanh(
+                    replay_data.observations, noise.detach(), base.detach()
                 )
-            )
+                composition = compose_action(
+                    base,
+                    logits,
+                    self._last_action_beta,
+                    self._exec_action_low_tensor,
+                    self._exec_action_high_tensor,
+                    numerical_tolerance=self.numerical_bound_tolerance,
+                )
+                teacher = tuple(
+                    value.detach()
+                    for value in self.qa_joint_target(
+                        replay_data.observations, composition.action_exec
+                    )
+                )
+            else:
+                teacher = tuple(
+                    value.detach()
+                    for value in self.qa_base_target(
+                        replay_data.observations, base
+                    )
+                )
         student = self.qw_base(replay_data.observations, noise.detach())
         if len(student) != len(teacher):
             raise RuntimeError("QW and target QA_base head counts differ")
@@ -1875,6 +2025,8 @@ class HierarchicalRFSDSRL(DSRL):
     def _update_qw_once(
         self, replay_data: HierarchyReplayBufferSamples
     ) -> tuple[float, float]:
+        if self.qw_candidates_per_state > 1:
+            return self._update_qw_multiw_once(replay_data)
         self.qw_base.set_training_mode(True)
         loss, student, teacher = self._qw_base_loss(replay_data)
         self.qw_base_optimizer.zero_grad(set_to_none=True)
@@ -1886,6 +2038,80 @@ class HierarchicalRFSDSRL(DSRL):
             [F.mse_loss(a.detach(), b) for a, b in zip(student, teacher)]
         ).mean()
         return float(loss.item()), float(mse.item())
+
+    def _update_qw_multiw_once(
+        self, replay_data: HierarchyReplayBufferSamples
+    ) -> tuple[float, float]:
+        """Run one optimizer step over B states x K Gaussian candidates.
+
+        Teacher/student rows are processed in bounded microbatches.  Each
+        microbatch loss is normalized by the full B*K row count before
+        backward, so changing only the microbatch size does not change the
+        mathematical mean loss or optimizer-step count.
+        """
+        observations = replay_data.observations
+        state_count = int(observations.shape[0])
+        if state_count != self.qw_state_batch_size:
+            raise RuntimeError(
+                "QW multi-w replay batch mismatch: expected "
+                f"{self.qw_state_batch_size}, got {state_count}"
+            )
+        total_rows = state_count * self.qw_candidates_per_state
+        expanded_observations = observations.repeat_interleave(
+            self.qw_candidates_per_state, dim=0
+        )
+        # Match the established Gaussian source: draw on CPU, then transfer.
+        decoder_candidates = th.randn(
+            total_rows,
+            self.diffusion_act_chunk,
+            self.diffusion_act_dim,
+        ).to(self.device)
+
+        self.qw_base.set_training_mode(True)
+        self.qw_base_optimizer.zero_grad(set_to_none=True)
+        loss_value = 0.0
+        squared_error_sum = 0.0
+        head_count: Optional[int] = None
+        for start in range(0, total_rows, self.qw_teacher_microbatch_size):
+            stop = min(start + self.qw_teacher_microbatch_size, total_rows)
+            obs_batch = expanded_observations[start:stop]
+            decoder_batch = decoder_candidates[start:stop]
+            with th.no_grad():
+                noise_batch = self._scale_noise_decoder_input(decoder_batch)
+                base_batch = self._decode_noise_decoder_input(
+                    obs_batch, decoder_batch
+                )
+                teacher = tuple(
+                    value.detach()
+                    for value in self.qa_base_target(obs_batch, base_batch)
+                )
+            student = self.qw_base(obs_batch, noise_batch.detach())
+            if len(student) != len(teacher):
+                raise RuntimeError("QW and target QA_base head counts differ")
+            if not student:
+                raise RuntimeError("QW must contain at least one head")
+            if head_count is None:
+                head_count = len(student)
+            elif head_count != len(student):
+                raise RuntimeError("QW head count changed across microbatches")
+            squared_errors = tuple(
+                F.mse_loss(student_head, teacher_head, reduction="sum")
+                for student_head, teacher_head in zip(student, teacher)
+            )
+            contribution = 0.5 * sum(squared_errors) / total_rows
+            contribution.backward()
+            loss_value += float(contribution.detach().item())
+            squared_error_sum += float(
+                sum(error.detach() for error in squared_errors).item()
+            )
+
+        self.qw_base_optimizer.step()
+        self.qw_base_optimizer_steps += 1
+        self.qw_base.set_training_mode(False)
+        if head_count is None:
+            raise RuntimeError("QW multi-w update produced no microbatches")
+        mse_value = squared_error_sum / (total_rows * head_count)
+        return loss_value, mse_value
 
     def _update_alpha_and_noise_once(
         self, replay_data: HierarchyReplayBufferSamples, *, update_alpha: bool
@@ -1941,7 +2167,10 @@ class HierarchicalRFSDSRL(DSRL):
             noise_loss.backward()
         actor_parameters = tuple(self.actor.parameters())
         pre_norm = self._gradient_norm(actor_parameters)
-        th.nn.utils.clip_grad_norm_(actor_parameters, self.noise_gradient_max_norm)
+        if self.noise_actor_gradient_clipping:
+            th.nn.utils.clip_grad_norm_(
+                actor_parameters, self.noise_gradient_max_norm
+            )
         post_norm = self._gradient_norm(actor_parameters)
         self.actor.optimizer.step()
         self.noise_actor_optimizer_steps += 1
@@ -2154,7 +2383,9 @@ class HierarchicalRFSDSRL(DSRL):
         if base_ready:
             for _ in range(profile.qw_base):
                 loss, mse = self._update_qw_once(
-                    self._sample_branch(BranchMode.BASE, batch_size)
+                    self._sample_branch(
+                        BranchMode.BASE, self.qw_state_batch_size
+                    )
                 )
                 metrics["qw_base_loss"].append(loss)
                 metrics["qw_base_mse"].append(mse)

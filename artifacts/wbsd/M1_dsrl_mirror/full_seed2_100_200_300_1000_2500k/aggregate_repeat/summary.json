@@ -1,0 +1,19 @@
+{
+  "aggregate_groups": 80,
+  "mode": "matched_dsrl_na_mirror_aggregate",
+  "proposal_seeds": [
+    1101,
+    2202,
+    3303,
+    4404
+  ],
+  "state_bank_selected_sha256": "a02ee21c84b1ee0973b0641eeb7d210fd91e800ddc82fed65050eb4ad32a5dc7",
+  "status": "complete",
+  "worker_count": 4,
+  "worker_manifests": [
+    "/home/mrf/dsrl/artifacts/wbsd/M1_dsrl_mirror/full_seed2_100_200_300_1000_2500k/workers/seed_1101/manifest.json",
+    "/home/mrf/dsrl/artifacts/wbsd/M1_dsrl_mirror/full_seed2_100_200_300_1000_2500k/workers/seed_2202/manifest.json",
+    "/home/mrf/dsrl/artifacts/wbsd/M1_dsrl_mirror/full_seed2_100_200_300_1000_2500k/workers/seed_3303/manifest.json",
+    "/home/mrf/dsrl/artifacts/wbsd/M1_dsrl_mirror/full_seed2_100_200_300_1000_2500k/workers/seed_4404/manifest.json"
+  ]
+}

@@ -149,3 +149,47 @@ After each stage:
 3. Check frozen parameters are unchanged unless a cited deviation was raised.
 4. Check no do-not-do item was violated.
 5. Record in this document's stage-status table.
+
+## 8. Results — Cotrain 2.5M main experiment (2026-08-22)
+
+> 完整明细见 [COTRAIN_2P5M_RESULTS.md](COTRAIN_2P5M_RESULTS.md)。
+> 协议:100 episodes/run/mode,env seeds 锁定 10000–10099,policy_seed_start=20000,stochastic,
+> protocol_v=1。三种模式取自同一 checkpoint:base-only = 关闭 residual;full = 完整 VS-Hier;
+> reference = 冻结 DDIM 预训练 policy。9/9 run complete。
+
+### 8.1 Locomotion 主实验(D4RL normalized)
+
+| 实验 | Hopper | HalfCheetah | Walker2d | 备注 |
+|---|---|---|---|---|
+| Frozen DDIM reference | 49.52 | 39.34 | 54.67 | 冻结预训练 policy |
+| 独立 DSRL reproduction,seed 1 | 95.17 | 42.59 | 82.91 | 非严格 matched(不同初始化) |
+| VS-Hier base-only,seed 1 | 87.54 | 52.63 | 88.65 | 同一 checkpoint 关闭 residual |
+| VS-Hier base-only,seed 2 | 84.22 | 49.48 | 88.98 | |
+| VS-Hier base-only,seed 3 | 85.84 | 55.44 | 87.90 | |
+| VS-Hier full,seed 1 | 96.12 | 57.47 | 91.12 | |
+| VS-Hier full,seed 2 | 95.60 | 54.82 | 91.70 | |
+| VS-Hier full,seed 3 | 94.30 | 58.93 | 91.41 | HC seed3 由重训器从 900k ckpt 恢复完成 |
+| VS-Hier full,mean ± std | 95.34 ± 0.75 | 57.07 ± 1.69 | 91.41 ± 0.24 | |
+
+### 8.2 Δresidual = full − base(9/9 全正)
+
+| | seed1 | seed2 | seed3 | mean |
+|---|---|---|---|---|
+| Hopper | +8.58 | +11.38 | +8.46 | **+9.47** |
+| HalfCheetah | +4.84 | +5.34 | +3.49 | **+4.56** |
+| Walker2d | +2.47 | +2.72 | +3.50 | **+2.90** |
+
+![Δresidual](figures/delta_residual.png)
+
+### 8.3 Early-fall rate(base vs full vs reference)
+
+- Hopper:base 0.58/0.68/0.61 → **full 0.04/0.00/0.00**(reference 1.00 全倒)
+- HalfCheetah:三者全 0
+- Walker2d:base/full 全 0;reference 0.78/0.78/0.60
+
+![Early-fall](figures/early_fall.png)
+
+### 8.4 未完成消融
+
+- 严格 matched DSRL(fresh control)seeds 1/2/3:配置就绪 `p6_*_fresh_control_2p5m.yaml`,未启动
+- Joint-credit baseline(E4)seeds 1/2/3:需新代码(信用分配开关),未启动

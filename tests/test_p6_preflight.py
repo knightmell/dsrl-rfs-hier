@@ -311,6 +311,22 @@ def test_fresh_manifest_top_level_prefill_action_policy_is_gaussian_prior(tmp_pa
             "7d103b793b591081947fca807ae13c2752bd6964621374101f5a89a19346ae16",
             17,
         ),
+        # E4 joint-credit baselines (HC/WK share the action-dim-6 constants of
+        # this test; hopper is covered by test_joint_credit_config_contract_flags).
+        (
+            "p6_halfcheetah_fresh_2p5m_joint_credit",
+            "halfcheetah-medium-v2",
+            "ec1169d29e2d0e006f0c2477ee8bc976b2f9b04b2c209df5bce9f36dd42596b8",
+            "1bc71a75b5cde71bb699cdbb4d169de9309a714b87c08bf88bd9c6c10a963e2a",
+            17,
+        ),
+        (
+            "p6_walker_fresh_2p5m_joint_credit",
+            "walker2d-medium-v2",
+            "1a650d5d882c78cfef1d753c532c0bdbced054738b0076efe6ce29d088681fa0",
+            "7d103b793b591081947fca807ae13c2752bd6964621374101f5a89a19346ae16",
+            17,
+        ),
     ),
 )
 def test_migrated_locomotion_configs_bind_artifacts_bounds_and_schedule(
@@ -485,7 +501,287 @@ def test_cotrain_manifest_update_profiles_and_flags(tmp_path):
     assert schedule["cross_lane_ratio"] == 0.25
     assert schedule["qa_base_cross_lane"] is False
     assert schedule["residual_exploration_std"] == 0.02
+    # E4 joint-credit flag: default OFF for the cotrain run.
+    assert schedule["qw_teacher_joint_credit"] is False
     assert json.loads(manifest_path.read_text()) == manifest
+
+
+def test_joint_credit_config_contract_flags(tmp_path):
+    """E4 config: identical cotrain schedule/contract except the QW teacher
+    joint-credit flag flips to True."""
+    cfg = compose_cotrain_hopper(
+        config_name="p6_hopper_fresh_2p5m_joint_credit",
+    )
+    static_manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+    manifest_path = tmp_path / "run_manifest.json"
+    manifest = run_preflight(
+        cfg,
+        make_execution_env(),
+        PROJECT_ROOT,
+        manifest_path,
+        algorithm=HIERARCHY_ALGORITHM,
+        static_manifest=static_manifest,
+    )
+
+    schedule = manifest["hierarchy_schedule"]
+    assert schedule["schedule_profile"] == "fresh_frozen_ddim_2p5m_cotrain"
+    assert schedule["phase_b_steps"] == 20_000
+    assert schedule["phase_r_steps"] == 80_000
+    assert schedule["beta_ramp_steps"] == 20_000
+    assert schedule["beta_hold_steps"] == 20_000
+    assert schedule["beta_floor"] == 0.02
+    assert schedule["beta_target"] == 0.1
+    assert schedule["base_lane_probability"] == 0.5
+    # Only the credit flag differs from the cotrain run.
+    assert schedule["qw_teacher_joint_credit"] is True
+    assert schedule["qa_joint_shadow_in_b"] is True
+    assert schedule["cross_lane_ratio"] == 0.25
+    assert schedule["qa_base_cross_lane"] is False
+    assert schedule["residual_exploration_std"] == 0.02
+    assert manifest["init_checkpoint_id"] == "fresh_frozen_ddim"
+    assert manifest["prefill_source"] == "fresh_frozen_ddim"
+    assert json.loads(manifest_path.read_text()) == manifest
+
+
+@pytest.mark.parametrize(
+    ("config_name", "expected_source"),
+    (
+        ("p6_walker_base_diag_current_k1_250k", "current_actor"),
+        ("p6_walker_base_diag_gaussian_k1_250k", "gaussian"),
+    ),
+)
+def test_walker_base_diagnosis_source_k1_250k_contract(
+    tmp_path, config_name, expected_source
+):
+    cfg = compose_cotrain_locomotion(config_name)
+    static_manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+    manifest = run_preflight(
+        cfg,
+        make_execution_env(shape=(24,)),
+        PROJECT_ROOT,
+        tmp_path / f"{expected_source}.json",
+        algorithm=HIERARCHY_ALGORITHM,
+        static_manifest=static_manifest,
+    )
+
+    assert cfg.total_timesteps == 2_500_000
+    assert cfg.p6.stop_after_chunk_transitions == 250_000
+    assert cfg.p6.online_eval_interval_chunk_transitions == 50_000
+    assert cfg.p6.model_checkpoint_interval_chunk_transitions == 50_000
+    assert cfg.p6.replay_checkpoint_interval_chunk_transitions == 250_000
+    assert cfg.train.rfs_hier_phase_b_steps == 500_000
+    assert manifest["hierarchy_schedule"]["qw_teacher_source"] == expected_source
+
+
+def test_walker_base_diagnosis_source_arms_differ_only_by_source_and_run_path():
+    current = OmegaConf.to_container(
+        compose_cotrain_locomotion("p6_walker_base_diag_current_k1_250k"),
+        resolve=True,
+    )
+    gaussian = OmegaConf.to_container(
+        compose_cotrain_locomotion("p6_walker_base_diag_gaussian_k1_250k"),
+        resolve=True,
+    )
+    for cfg in (current, gaussian):
+        cfg.pop("name")
+        cfg.pop("logdir")
+        cfg["wandb"].pop("run")
+        cfg["train"].pop("rfs_hier_qw_teacher_source")
+    assert current == gaussian
+
+
+def test_preflight_rejects_unknown_qw_teacher_source():
+    cfg = compose_cotrain_locomotion("p6_walker_base_diag_current_k1_250k")
+    cfg.train.rfs_hier_qw_teacher_source = "not-a-distribution"
+    with pytest.raises(ValueError, match="rfs_hier_qw_teacher_source"):
+        static_preflight(cfg, PROJECT_ROOT, algorithm=HIERARCHY_ALGORITHM)
+
+
+def test_preflight_records_multiw_teacher_budget_contract():
+    cfg = compose_cotrain_locomotion(
+        "p6_walker_base_diag_gaussian_k1_noclip_250k"
+    )
+    cfg.train.rfs_hier_qw_candidates_per_state = 8
+    cfg.train.rfs_hier_qw_state_batch_size = 32
+    cfg.train.rfs_hier_qw_teacher_microbatch_size = 64
+
+    manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+
+    hierarchy = manifest["training_contract"]["hierarchy"]
+    assert hierarchy["qw_candidates_per_state"] == 8
+    assert hierarchy["qw_state_batch_size"] == 32
+    assert hierarchy["qw_teacher_microbatch_size"] == 64
+    assert hierarchy["qw_teacher_queries_per_update"] == 256
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("rfs_hier_qw_candidates_per_state", 0),
+        ("rfs_hier_qw_state_batch_size", True),
+        ("rfs_hier_qw_teacher_microbatch_size", 0),
+    ),
+)
+def test_preflight_rejects_invalid_multiw_contract(field, value):
+    cfg = compose_cotrain_locomotion(
+        "p6_walker_base_diag_gaussian_k1_noclip_250k"
+    )
+    cfg.train[field] = value
+    with pytest.raises(ValueError, match=field):
+        static_preflight(cfg, PROJECT_ROOT, algorithm=HIERARCHY_ALGORITHM)
+
+
+def test_preflight_rejects_multiw_with_actor_local_teacher():
+    cfg = compose_cotrain_locomotion("p6_walker_base_diag_current_k1_noclip_250k")
+    cfg.train.rfs_hier_qw_candidates_per_state = 4
+    with pytest.raises(ValueError, match="requires.*gaussian"):
+        static_preflight(cfg, PROJECT_ROOT, algorithm=HIERARCHY_ALGORITHM)
+
+
+@pytest.mark.parametrize(
+    ("config_name", "expected_k", "expected_states", "expected_queries"),
+    (
+        ("p6_walker_base_diag_gaussian_k4_b256_noclip_100k", 4, 256, 1024),
+        ("p6_walker_base_diag_gaussian_k8_b256_noclip_100k", 8, 256, 2048),
+        ("p6_walker_base_diag_gaussian_k8_b32_noclip_100k", 8, 32, 256),
+        ("p6_walker_base_diag_gaussian_k16_b128_noclip_100k", 16, 128, 2048),
+        ("p6_walker_base_diag_gaussian_k64_b256_noclip_100k", 64, 256, 16384),
+    ),
+)
+def test_walker_multiw_sweep_configs_declare_exact_budget(
+    config_name,
+    expected_k,
+    expected_states,
+    expected_queries,
+):
+    cfg = compose_cotrain_locomotion(config_name)
+    manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+    hierarchy = manifest["training_contract"]["hierarchy"]
+
+    assert cfg.seed == 1
+    assert cfg.p6.stop_after_chunk_transitions == 100_000
+    assert cfg.p6.online_eval_interval_chunk_transitions == 50_000
+    assert cfg.p6.model_checkpoint_interval_chunk_transitions == 50_000
+    assert hierarchy["qw_teacher_source"] == "gaussian"
+    assert hierarchy["noise_actor_gradient_clipping"] is False
+    assert hierarchy["qw_candidates_per_state"] == expected_k
+    assert hierarchy["qw_state_batch_size"] == expected_states
+    assert hierarchy["qw_teacher_microbatch_size"] == 256
+    assert hierarchy["qw_teacher_queries_per_update"] == expected_queries
+
+
+def test_preflight_records_noise_actor_no_clip_switch():
+    cfg = compose_cotrain_locomotion("p6_walker_base_diag_current_k1_250k")
+    cfg.train.rfs_hier_noise_actor_gradient_clipping = False
+
+    manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+
+    hierarchy = manifest["training_contract"]["hierarchy"]
+    assert hierarchy["noise_actor_gradient_clipping"] is False
+
+
+def test_preflight_defaults_noise_actor_gradient_clipping_to_enabled():
+    cfg = compose_cotrain_locomotion("p6_walker_base_diag_current_k1_250k")
+
+    manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+
+    hierarchy = manifest["training_contract"]["hierarchy"]
+    assert hierarchy["noise_actor_gradient_clipping"] is True
+
+
+def test_preflight_rejects_non_boolean_noise_actor_gradient_clipping():
+    cfg = compose_cotrain_locomotion("p6_walker_base_diag_current_k1_250k")
+    cfg.train.rfs_hier_noise_actor_gradient_clipping = "false"
+
+    with pytest.raises(
+        ValueError,
+        match="rfs_hier_noise_actor_gradient_clipping",
+    ):
+        static_preflight(cfg, PROJECT_ROOT, algorithm=HIERARCHY_ALGORITHM)
+
+
+@pytest.mark.parametrize(
+    ("config_name", "expected_source"),
+    (
+        ("p6_walker_base_diag_current_k1_noclip_250k", "current_actor"),
+        ("p6_walker_base_diag_gaussian_k1_noclip_250k", "gaussian"),
+    ),
+)
+def test_walker_no_clip_source_arms_declare_exact_contract(
+    config_name,
+    expected_source,
+):
+    cfg = compose_cotrain_locomotion(config_name)
+    manifest = static_preflight(
+        cfg,
+        PROJECT_ROOT,
+        algorithm=HIERARCHY_ALGORITHM,
+    )
+    hierarchy = manifest["training_contract"]["hierarchy"]
+
+    assert cfg.total_timesteps == 2_500_000
+    assert cfg.p6.stop_after_chunk_transitions == 250_000
+    assert hierarchy["qw_teacher_source"] == expected_source
+    assert hierarchy["noise_actor_gradient_clipping"] is False
+    assert manifest["training_contract"]["noise_gradient_max_norm"] == 1.0
+
+
+def _normalized_source_clip_arm(config_name):
+    cfg = OmegaConf.to_container(
+        compose_cotrain_locomotion(config_name),
+        resolve=True,
+    )
+    cfg.pop("name")
+    cfg.pop("logdir")
+    cfg["wandb"].pop("run")
+    return cfg
+
+
+def test_walker_no_clip_current_arm_differs_from_clip_control_only_by_switch():
+    clip = _normalized_source_clip_arm("p6_walker_base_diag_current_k1_250k")
+    no_clip = _normalized_source_clip_arm(
+        "p6_walker_base_diag_current_k1_noclip_250k"
+    )
+
+    assert clip["train"].pop("rfs_hier_noise_actor_gradient_clipping") is True
+    assert no_clip["train"].pop("rfs_hier_noise_actor_gradient_clipping") is False
+    assert clip == no_clip
+
+
+def test_walker_no_clip_source_arms_differ_only_by_source_and_run_path():
+    current = _normalized_source_clip_arm(
+        "p6_walker_base_diag_current_k1_noclip_250k"
+    )
+    gaussian = _normalized_source_clip_arm(
+        "p6_walker_base_diag_gaussian_k1_noclip_250k"
+    )
+    assert current["train"].pop("rfs_hier_qw_teacher_source") == "current_actor"
+    assert gaussian["train"].pop("rfs_hier_qw_teacher_source") == "gaussian"
+    assert current == gaussian
 
 
 def test_cotrain_b_contract_marks_qa_base_cross_lane_true(tmp_path):

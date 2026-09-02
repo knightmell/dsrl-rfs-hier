@@ -1,0 +1,10 @@
+# E4 joint-credit baseline (halfcheetah): see p6_hopper_fresh_2p5m_joint_credit.yaml.
+
+defaults:
+  - p6_halfcheetah_fresh_2p5m_cotrain
+  - _self_
+
+name: fresh_frozen_ddim_joint_credit_${env_name}_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+
+train:
+  rfs_hier_qw_teacher_joint_credit: true

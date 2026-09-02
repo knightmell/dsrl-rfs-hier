@@ -268,6 +268,40 @@ def make_hierarchy_schedule(
                 HierarchyPhase.RESIDUAL: UpdateProfile(5, 5, 2, 1, 1, 1),
             },
         },
+        # Walker K4 diagnosis: preserve every Phase-B optimizer budget in R
+        # and add residual learning instead of reallocating base updates.
+        "fresh_frozen_ddim_2p5m_additive_res": {
+            "phase_b_steps": 500_000,
+            "phase_r_steps": 2_000_000,
+            "phase_j_steps": 0,
+            "phase_j_enabled": False,
+            "beta_ramp_steps": 50_000,
+            "beta_hold_steps": 50_000,
+            "beta_floor": 0.02,
+            "beta_target": 0.1,
+            "base_lane_probability": 0.5,
+            "update_profiles": {
+                HierarchyPhase.BASE: UpdateProfile(20, 10, 10, 20, 20, 0),
+                HierarchyPhase.RESIDUAL: UpdateProfile(20, 10, 10, 20, 20, 4),
+            },
+        },
+        # Matched development control.  Its Phase-B boundary is deliberately
+        # beyond the 750k/1M gates so an exact 500k resume keeps collecting and
+        # updating only the base branch throughout the paired comparison.
+        "fresh_frozen_ddim_2p5m_base_continue": {
+            "phase_b_steps": 2_000_000,
+            "phase_r_steps": 500_000,
+            "phase_j_steps": 0,
+            "phase_j_enabled": False,
+            "beta_ramp_steps": 50_000,
+            "beta_hold_steps": 50_000,
+            "beta_floor": 0.02,
+            "beta_target": 0.1,
+            "base_lane_probability": 0.5,
+            "update_profiles": {
+                HierarchyPhase.BASE: UpdateProfile(20, 10, 10, 20, 20, 0),
+            },
+        },
     }
     if profile_name not in profiles:
         raise ValueError(

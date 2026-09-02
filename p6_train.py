@@ -68,6 +68,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.dsrl.hierarchical_rfs_dsrl import (
     HierarchicalRFSDSRL,
+    QW_TEACHER_SOURCE_CURRENT_ACTOR,
     _LegacyLoadableDSRL,
 )
 from stable_baselines3.dsrl.hierarchical_replay_buffer import (
@@ -485,6 +486,8 @@ def _hierarchy_init_mode(cfg: Any) -> str:
         "fresh_frozen_ddim_5m",
         "fresh_frozen_ddim_2p5m",
         "fresh_frozen_ddim_2p5m_cotrain",
+        "fresh_frozen_ddim_2p5m_additive_res",
+        "fresh_frozen_ddim_2p5m_base_continue",
     ):
         return "fresh"
     return "warmstart"
@@ -581,6 +584,28 @@ def _construct_hierarchy(
         qa_joint_shadow_in_b=bool(
             cfg.train.get("rfs_hier_qa_joint_shadow_in_b", False)
         ),
+        qw_teacher_joint_credit=bool(
+            cfg.train.get("rfs_hier_qw_teacher_joint_credit", False)
+        ),
+        qw_teacher_source=str(
+            cfg.train.get(
+                "rfs_hier_qw_teacher_source",
+                QW_TEACHER_SOURCE_CURRENT_ACTOR,
+            )
+        ),
+        qw_candidates_per_state=int(
+            cfg.train.get("rfs_hier_qw_candidates_per_state", 1)
+        ),
+        qw_state_batch_size=int(
+            cfg.train.get("rfs_hier_qw_state_batch_size", cfg.train.batch_size)
+        ),
+        qw_teacher_microbatch_size=int(
+            cfg.train.get(
+                "rfs_hier_qw_teacher_microbatch_size",
+                int(cfg.train.get("rfs_hier_qw_state_batch_size", cfg.train.batch_size))
+                * int(cfg.train.get("rfs_hier_qw_candidates_per_state", 1)),
+            )
+        ),
         cross_lane_ratio=float(
             cfg.train.get("rfs_hier_cross_lane_ratio", 0.0)
         ),
@@ -595,6 +620,9 @@ def _construct_hierarchy(
         ),
         noise_gradient_max_norm=float(
             cfg.train.rfs_hier_noise_gradient_max_norm
+        ),
+        noise_actor_gradient_clipping=bool(
+            cfg.train.get("rfs_hier_noise_actor_gradient_clipping", True)
         ),
         residual_gradient_max_norm=float(
             cfg.train.rfs_hier_residual_gradient_max_norm
