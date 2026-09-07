@@ -1,0 +1,35 @@
+defaults:
+  - p6_halfcheetah_fresh_2p5m_cotrain
+  - _self_
+
+# Short screening profile aligned with the validated Walker K4 Gaussian/NoClip
+# arm.  Task-specific network, normalization, and environment settings remain
+# inherited from p6_halfcheetah.
+name: fresh_frozen_ddim_600k_k4_noclip_${env_name}_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 600000
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_cotrain
+  rfs_hier_phase_b_steps: 300000
+  rfs_hier_phase_r_steps: 300000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_hold_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: false
+  rfs_hier_residual_exploration_std: 0.02
+  rfs_hier_qw_teacher_source: gaussian
+  rfs_hier_qw_candidates_per_state: 4
+  rfs_hier_qw_state_batch_size: 256
+  rfs_hier_qw_teacher_microbatch_size: 256
+  rfs_hier_noise_actor_gradient_clipping: false
+
+p6:
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 300000
