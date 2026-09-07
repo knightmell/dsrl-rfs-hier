@@ -1,0 +1,42 @@
+# 600k observed-budget base-only control for the current K4 Gaussian/NoClip
+# protocol.  The declared hierarchy schedule remains 2.5M so the production
+# runner can validate a complete schedule; stop_after_chunk_transitions keeps
+# the run entirely inside Phase B (base-only) for the observed 600k chunks.
+
+defaults:
+  - p6_halfcheetah_fresh_2p5m_cotrain
+  - _self_
+
+name: fresh_frozen_ddim_600k_base_control_k4_noclip_${env_name}_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 2500000
+
+train:
+  # Keep the exact current base-control schedule used by the Walker control:
+  # Phase B starts at zero and remains active until 2.0M.  The 600k stop gate
+  # therefore cannot enter the residual phase.
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_base_continue
+  rfs_hier_phase_b_steps: 2000000
+  rfs_hier_phase_r_steps: 500000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_hold_steps: 50000
+  rfs_hier_beta_floor: 0.02
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: false
+  rfs_hier_residual_exploration_std: 0.02
+  rfs_hier_qw_teacher_source: gaussian
+  rfs_hier_qw_candidates_per_state: 4
+  rfs_hier_qw_state_batch_size: 256
+  rfs_hier_qw_teacher_microbatch_size: 256
+  rfs_hier_noise_actor_gradient_clipping: false
+
+p6:
+  stop_after_chunk_transitions: 600000
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 300000
