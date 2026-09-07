@@ -26,6 +26,13 @@ completion is the valid end condition.
 
 - `cfg/gym/p6_halfcheetah_fresh_600k_cotrain_k4_noclip.yaml`
 - `cfg/gym/p6_hopper_fresh_600k_cotrain_k4_noclip.yaml`
+- `cfg/gym/p6_halfcheetah_fresh_600k_base_control_k4_noclip.yaml`
+- `cfg/gym/p6_hopper_fresh_600k_base_control_k4_noclip.yaml`
+
+The two `base_control` configurations keep the complete 2.5M schedule in the
+manifest but stop at 600k transitions while still in Phase B. This is the
+current internal base-only control for the main figure; it is not the external
+matched DSRL baseline.
 
 ## Durable launch
 

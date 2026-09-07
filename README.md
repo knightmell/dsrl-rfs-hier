@@ -16,12 +16,68 @@
 ## Overview
 Diffusion steering via reinforcement learning (DSRL) is a lightweight and efficient method for RL finetuning of diffusion and flow policies. Rather than modifying the weights of the diffusion/flow policy, DSRL instead modifies the noise distribution sampled from to begin the denoising process.
 
+## 当前实验入口（VS-Hier / K=4 / Gaussian / NoClip）
+
+如果你的目标是复现当前论文主线，请先阅读：
+
+- [环境安装与检查](docs/ENVIRONMENT_SETUP.md)
+- [训练指南与优先级](docs/TRAINING_GUIDE.md)
+- [600k K=4 NoClip runbook](docs/rfs_hier_v1/RUNBOOK_600K_K4_NOCLIP.md)
+
+最短路径是：
+
+```bash
+conda activate dsrl
+cd /path/to/dsrl-rfs-hier
+git fetch origin exp
+git checkout exp
+```
+
+当前优先实验是同一份代码和环境下的四个配对运行：
+
+| 优先级 | 运行 | 预算口径 |
+|---|---|---|
+| 1 | HalfCheetah VS-Hier full | 300k BASE + 300k RES，实际 600k |
+| 2 | HalfCheetah base control | 600k 观测预算，全程 BASE，不进入 RES |
+| 3 | Hopper VS-Hier full | 300k BASE + 300k RES，实际 600k |
+| 4 | Hopper base control | 600k 观测预算，全程 BASE，不进入 RES |
+
+对应配置文件：
+
+```text
+cfg/gym/p6_halfcheetah_fresh_600k_cotrain_k4_noclip.yaml
+cfg/gym/p6_halfcheetah_fresh_600k_base_control_k4_noclip.yaml
+cfg/gym/p6_hopper_fresh_600k_cotrain_k4_noclip.yaml
+cfg/gym/p6_hopper_fresh_600k_base_control_k4_noclip.yaml
+```
+
+先完成环境检查，再按 `docs/TRAINING_GUIDE.md` 的命令启动。不要把
+`base-control` 的配置误改成 `total_timesteps=600000`：它保留完整的
+2.5M schedule，但由 `stop_after_chunk_transitions=600000` 在 BASE 边界
+停止，因此输出中出现计划内 `exit 75`/`INTERRUPTED` 是预期行为。
+
+如果希望少记命令，四种运行也可以直接用：
+
+```bash
+scripts/run_current_600k.sh hc-full 1 0
+scripts/run_current_600k.sh hc-base 1 0
+scripts/run_current_600k.sh hopper-full 1 0
+scripts/run_current_600k.sh hopper-base 1 0
+```
+
+脚本会先检查 CUDA、拒绝覆盖已有 run directory，并调用 durable launcher。
+
 
 ## Installation
+本分支的 VS-Hier 训练不要按下面原始 DSRL 的旧路径启动；请先按
+[ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) 完成当前 `dsrl` 环境。
+
+如果只想使用原始 DSRL/Robomimic 代码，原始安装流程仍然是：
+
 1. Clone repository
 ```
-git clone --recurse-submodules git@github.com:ajwagen/dsrl.git
-cd dsrl
+git clone --recurse-submodules git@github.com:knightmell/dsrl-rfs-hier.git
+cd dsrl-rfs-hier
 ```
 2. Create conda environment
 ```
