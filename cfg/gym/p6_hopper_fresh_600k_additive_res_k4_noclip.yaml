@@ -1,0 +1,38 @@
+# 600k K4 Gaussian/NoClip additive-R branch.
+#
+# The first 300k BASE checkpoint is inherited from the original screening run.
+# In the following 300k R phase, every BASE update remains at its Phase-B
+# frequency and four residual-actor updates are added per train call.
+
+defaults:
+  - p6_hopper_fresh_2p5m_cotrain
+  - _self_
+
+name: fresh_frozen_ddim_600k_k4_additive_res_noclip_${env_name}_dsrl_na_rfs_hier_seed${seed}_${total_timesteps}chunks
+total_timesteps: 600000
+
+train:
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_additive_res
+  rfs_hier_phase_b_steps: 300000
+  rfs_hier_phase_r_steps: 300000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 50000
+  rfs_hier_beta_hold_steps: 50000
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: false
+  rfs_hier_residual_exploration_std: 0.02
+  rfs_hier_qw_teacher_source: gaussian
+  rfs_hier_qw_candidates_per_state: 4
+  rfs_hier_qw_state_batch_size: 256
+  rfs_hier_qw_teacher_microbatch_size: 256
+  rfs_hier_noise_actor_gradient_clipping: false
+
+p6:
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 300000
