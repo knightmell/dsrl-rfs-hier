@@ -1,0 +1,17 @@
+# @package _global_
+# Explicit throughput overlay for new VS-Hier runs.
+#
+# It preserves the algorithm (K, UTD, replay semantics, sampling distribution,
+# optimizer steps, and residual composition).  It only turns off redundant
+# per-update runtime audits, coalesces the current K4/B256 QW teacher into one
+# 1024-row microbatch, and lowers artifact/evaluation frequency.  Never apply
+# it to an already-running process or use it when strict per-update diagnostics
+# are the experiment under test.
+train:
+  rfs_hier_runtime_contract_checks: false
+  rfs_hier_qw_teacher_microbatch_size: 1024
+
+p6:
+  online_eval_interval_chunk_transitions: 100000
+  model_checkpoint_interval_chunk_transitions: 100000
+  replay_checkpoint_interval_chunk_transitions: 200000

@@ -70,3 +70,24 @@ def test_new_k4_profiles_pass_static_preflight_and_use_fresh_init():
             config.train.rfs_hier_schedule_profile
         )
         assert _hierarchy_init_mode(config) == "fresh"
+
+
+def test_fast_runtime_overlay_preserves_k4_query_budget_and_reduces_io_cadence():
+    with initialize_config_dir(
+        config_dir=str(CONFIG_DIR),
+        job_name="test_fast_runtime_overlay",
+        version_base=None,
+    ):
+        config = compose(
+            config_name="p6_walker_300k_800k_additive_res_k4_noclip",
+            overrides=["seed=1", "+runtime=fast"],
+        )
+    OmegaConf.resolve(config)
+
+    assert config.train.rfs_hier_qw_candidates_per_state == 4
+    assert config.train.rfs_hier_qw_state_batch_size == 256
+    assert config.train.rfs_hier_qw_teacher_microbatch_size == 1024
+    assert config.train.rfs_hier_runtime_contract_checks is False
+    assert config.p6.online_eval_interval_chunk_transitions == 100_000
+    assert config.p6.model_checkpoint_interval_chunk_transitions == 100_000
+    assert config.p6.replay_checkpoint_interval_chunk_transitions == 200_000

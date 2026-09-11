@@ -634,6 +634,9 @@ def _construct_hierarchy(
         diagnostics_interval_updates=int(
             cfg.p6.diagnostics_interval_updates
         ),
+        runtime_contract_checks=bool(
+            cfg.train.get("rfs_hier_runtime_contract_checks", True)
+        ),
         seed=int(cfg.seed),
     )
     if init_mode == "fresh":
@@ -1024,6 +1027,8 @@ def _start_attempt(
             (attempt_directory / "task_overrides.json").relative_to(run_directory)
         ),
     }
+    if os.environ.get(_SOURCE_STATE_BOUNDARY_RESUME_ENV) == "1":
+        attempt["source_state_boundary_resume"] = True
     attempts.append(attempt)
     for stale_key in (
         "interruption_reason",
@@ -1110,6 +1115,13 @@ def _write_attempt_traceback(
     return str(traceback_path.relative_to(run_directory))
 
 
+# Opt-in escape hatch for resuming a bundle across a source-state boundary
+# (the recorded config_contract_sha256 / source_state_sha256 were computed by
+# a different working tree).  Every other resume check still applies.  The
+# boundary crossing is printed to the run log and marked on the attempt.
+_SOURCE_STATE_BOUNDARY_RESUME_ENV = "P6_ALLOW_SOURCE_STATE_BOUNDARY_RESUME"
+
+
 def _verify_existing_manifest(
     *,
     path: Path,
@@ -1122,9 +1134,21 @@ def _verify_existing_manifest(
     manifest = _read_manifest(path)
     if manifest.get("run_status") == "complete":
         raise ValueError("Completed P6 runs cannot be resumed")
+    allow_source_state_boundary = (
+        os.environ.get(_SOURCE_STATE_BOUNDARY_RESUME_ENV) == "1"
+    )
+    for key in ("config_contract_sha256", "source_state_sha256"):
+        if manifest.get(key) == static_manifest.get(key):
+            continue
+        if not allow_source_state_boundary:
+            raise ValueError(f"Resume run manifest mismatch for {key}")
+        print(
+            f"[p6] AUTHORIZED source-state boundary resume for {key}: "
+            f"recorded={manifest.get(key)} current={static_manifest.get(key)} "
+            f"(enabled by {_SOURCE_STATE_BOUNDARY_RESUME_ENV}=1)",
+            flush=True,
+        )
     for key in (
-        "config_contract_sha256",
-        "source_state_sha256",
         "algorithm",
         "run_name",
         "init_checkpoint_sha256",

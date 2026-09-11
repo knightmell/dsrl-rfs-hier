@@ -263,6 +263,33 @@ def test_construct_hierarchy_forwards_noise_actor_no_clip_switch(monkeypatch):
     assert captured["noise_actor_gradient_clipping"] is False
 
 
+def test_construct_hierarchy_forwards_runtime_contract_check_switch(monkeypatch):
+    """Fast runtime must opt out only when the resolved config says so."""
+    captured = {}
+
+    class CapturingHierarchy:
+        def __init__(self, *args, **kwargs):
+            del args
+            captured.update(kwargs)
+            self.initialized = False
+
+        def initialize_from_fresh_frozen_ddim(self):
+            self.initialized = True
+
+    cfg = make_hierarchy_source_cfg("gaussian")
+    cfg.train.rfs_hier_runtime_contract_checks = False
+    monkeypatch.setattr("p6_train.HierarchicalRFSDSRL", CapturingHierarchy)
+    model = _construct_hierarchy(
+        cfg,
+        TinyEnvironment(),
+        IdentityDecoder(),
+        init_mode="fresh",
+    )
+
+    assert model.initialized is True
+    assert captured["runtime_contract_checks"] is False
+
+
 def make_hierarchy_fresh(decoder=None, *, cfg=None):
     """Fresh cotrain hierarchy built from the same cfg/policy-kwargs/seed as a
     matched fresh control, so the base-branch init is directly comparable."""

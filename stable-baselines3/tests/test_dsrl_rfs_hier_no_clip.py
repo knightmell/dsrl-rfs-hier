@@ -42,3 +42,24 @@ def test_noise_actor_no_clip_skips_clip_and_reports_raw_post_norm(monkeypatch):
     assert model.noise_actor_gradient_clipping is False
     assert pre_norm > 0.0
     assert post_norm == pytest.approx(pre_norm, rel=0, abs=0)
+
+
+def test_fast_runtime_defers_noise_metrics_and_skips_gradient_audit(monkeypatch):
+    """The fast overlay preserves the actor update but omits hot-path audits."""
+    model, _ = make_model(runtime_contract_checks=False)
+    sample = _base_sample(model)
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("fast runtime must not execute the strict gradient audit")
+
+    monkeypatch.setattr(model, "_gradient_norm", forbidden)
+    monkeypatch.setattr(torch, "equal", forbidden)
+
+    noise_loss, alpha_loss, pre_norm, post_norm = model._update_alpha_and_noise_once(
+        sample, update_alpha=True
+    )
+
+    assert isinstance(noise_loss, torch.Tensor)
+    assert isinstance(alpha_loss, torch.Tensor)
+    assert pre_norm is None
+    assert post_norm is None

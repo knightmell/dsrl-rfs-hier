@@ -493,6 +493,7 @@ class HierarchicalRFSDSRL(DSRL):
         termination_semantics: str = "early_break_on_done",
         numerical_bound_tolerance: float = 1e-6,
         diagnostics_interval_updates: int = 100,
+        runtime_contract_checks: bool = True,
         ranking_diag_n_obs: int = 128,
         ranking_diag_seed: Optional[int] = None,
         # Gated V1.1/V1.2 mechanisms.  All default OFF: Core V1 behavior is
@@ -668,6 +669,13 @@ class HierarchicalRFSDSRL(DSRL):
         self.termination_semantics = termination_semantics
         self.numerical_bound_tolerance = float(numerical_bound_tolerance)
         self.diagnostics_interval_updates = int(diagnostics_interval_updates)
+        # Strict mode is the default and retains the per-update defensive
+        # checks used while bringing up a new algorithm path.  Fast runtime is
+        # an explicitly selected throughput mode: replay add-time validation,
+        # module freezing, and optimizer behavior stay unchanged, while
+        # redundant hot-path assertions and gradient audit snapshots are
+        # omitted.
+        self.runtime_contract_checks = bool(runtime_contract_checks)
         self.ranking_diag_n_obs = int(ranking_diag_n_obs)
         self.ranking_diag_seed = int(
             ranking_diag_seed
@@ -1960,6 +1968,23 @@ class HierarchicalRFSDSRL(DSRL):
             squared += parameter.grad.detach().double().square().sum().cpu()
         return float(th.sqrt(squared).item()) if found else 0.0
 
+    def _metric_scalar(self, value: th.Tensor) -> Union[float, th.Tensor]:
+        """Keep metrics on-device in fast mode until the logger consumes them."""
+
+        detached = value.detach()
+        return float(detached.item()) if self.runtime_contract_checks else detached
+
+    @staticmethod
+    def _mean_metric_values(values: Sequence[Union[float, th.Tensor]]) -> float:
+        """Synchronize deferred fast-runtime metrics once per logged series."""
+
+        if not values:
+            raise ValueError("Cannot average an empty metric series")
+        first = values[0]
+        if isinstance(first, th.Tensor):
+            return float(th.stack(list(values)).mean().item())
+        return float(np.mean(values))
+
     def _update_qa_base_once(
         self, replay_data: HierarchyReplayBufferSamples
     ) -> tuple[float, float]:
@@ -1972,7 +1997,9 @@ class HierarchicalRFSDSRL(DSRL):
         # (a_exec == a_base + beta*delta) are both legal -- they differ only
         # in the continuation.  What is never allowed is querying an action
         # that was not executed.
-        if not th.all(replay_data.action_exec == replay_data.actions):
+        if self.runtime_contract_checks and not th.all(
+            replay_data.action_exec == replay_data.actions
+        ):
             raise AssertionError(
                 "QA_base batch contains a transition whose executed action "
                 "action_exec does not match the executed action of the "
@@ -1996,7 +2023,7 @@ class HierarchicalRFSDSRL(DSRL):
             self.qa_base_target_updates += 1
         self.qa_base.set_training_mode(False)
         td = th.stack([(value.detach() - target).abs().mean() for value in current]).mean()
-        return float(loss.item()), float(td.item())
+        return self._metric_scalar(loss), self._metric_scalar(td)
 
     def _update_qa_joint_once(
         self, replay_data: HierarchyReplayBufferSamples
@@ -2020,7 +2047,7 @@ class HierarchicalRFSDSRL(DSRL):
             self.qa_joint_target_updates += 1
         self.qa_joint.set_training_mode(False)
         td = th.stack([(value.detach() - target).abs().mean() for value in current]).mean()
-        return float(loss.item()), float(td.item())
+        return self._metric_scalar(loss), self._metric_scalar(td)
 
     def _update_qw_once(
         self, replay_data: HierarchyReplayBufferSamples
@@ -2037,7 +2064,7 @@ class HierarchicalRFSDSRL(DSRL):
         mse = th.stack(
             [F.mse_loss(a.detach(), b) for a, b in zip(student, teacher)]
         ).mean()
-        return float(loss.item()), float(mse.item())
+        return self._metric_scalar(loss), self._metric_scalar(mse)
 
     def _update_qw_multiw_once(
         self, replay_data: HierarchyReplayBufferSamples
@@ -2069,8 +2096,8 @@ class HierarchicalRFSDSRL(DSRL):
 
         self.qw_base.set_training_mode(True)
         self.qw_base_optimizer.zero_grad(set_to_none=True)
-        loss_value = 0.0
-        squared_error_sum = 0.0
+        loss_value = th.zeros((), device=self.device)
+        squared_error_sum = th.zeros((), device=self.device)
         head_count: Optional[int] = None
         for start in range(0, total_rows, self.qw_teacher_microbatch_size):
             stop = min(start + self.qw_teacher_microbatch_size, total_rows)
@@ -2100,10 +2127,10 @@ class HierarchicalRFSDSRL(DSRL):
             )
             contribution = 0.5 * sum(squared_errors) / total_rows
             contribution.backward()
-            loss_value += float(contribution.detach().item())
-            squared_error_sum += float(
-                sum(error.detach() for error in squared_errors).item()
-            )
+            loss_value += contribution.detach()
+            squared_error_sum += th.stack(
+                [error.detach() for error in squared_errors]
+            ).sum()
 
         self.qw_base_optimizer.step()
         self.qw_base_optimizer_steps += 1
@@ -2111,15 +2138,20 @@ class HierarchicalRFSDSRL(DSRL):
         if head_count is None:
             raise RuntimeError("QW multi-w update produced no microbatches")
         mse_value = squared_error_sum / (total_rows * head_count)
-        return loss_value, mse_value
+        return self._metric_scalar(loss_value), self._metric_scalar(mse_value)
 
     def _update_alpha_and_noise_once(
         self, replay_data: HierarchyReplayBufferSamples, *, update_alpha: bool
-    ) -> tuple[float, Optional[float], float, float]:
+    ) -> tuple[
+        Union[float, th.Tensor],
+        Optional[Union[float, th.Tensor]],
+        Optional[float],
+        Optional[float],
+    ]:
         self.actor.train(True)
         noise, log_prob = self.actor.action_log_prob(replay_data.observations)
         alpha_snapshot = self._current_entropy_coefficient().detach().clone()
-        alpha_loss_value: Optional[float] = None
+        alpha_loss_value: Optional[Union[float, th.Tensor]] = None
         if update_alpha and self.ent_coef_optimizer is not None and self.log_ent_coef is not None:
             alpha_loss = -(
                 self.log_ent_coef
@@ -2129,7 +2161,7 @@ class HierarchicalRFSDSRL(DSRL):
             alpha_loss.backward()
             self.ent_coef_optimizer.step()
             self.alpha_optimizer_steps += 1
-            alpha_loss_value = float(alpha_loss.item())
+            alpha_loss_value = self._metric_scalar(alpha_loss)
             self.ent_coef_optimizer.zero_grad(set_to_none=True)
         # Spec 6.3 / 12.5: the noise loss must not add gradients to any
         # non-actor module.  QW_base parameters are frozen for the FORWARD AND
@@ -2139,23 +2171,26 @@ class HierarchicalRFSDSRL(DSRL):
         # after: earlier update blocks in this train() call already left grads
         # on qa_base/qw_base, so comparing only grad PRESENCE could not detect a
         # leak that accumulates on top of those existing grads.
-        unrelated = {
-            "qa_base": self.qa_base,
-            "qw_base": self.qw_base,
-            "qa_joint": self.qa_joint,
-            "residual_actor": self.residual_actor,
-        }
-        before = {
-            name: {
-                id(parameter): (
-                    parameter.grad.detach().clone()
-                    if parameter.grad is not None
-                    else None
-                )
-                for parameter in module.parameters()
+        unrelated: Mapping[str, nn.Module] = {}
+        before: Mapping[str, Mapping[int, Optional[th.Tensor]]] = {}
+        if self.runtime_contract_checks:
+            unrelated = {
+                "qa_base": self.qa_base,
+                "qw_base": self.qw_base,
+                "qa_joint": self.qa_joint,
+                "residual_actor": self.residual_actor,
             }
-            for name, module in unrelated.items()
-        }
+            before = {
+                name: {
+                    id(parameter): (
+                        parameter.grad.detach().clone()
+                        if parameter.grad is not None
+                        else None
+                    )
+                    for parameter in module.parameters()
+                }
+                for name, module in unrelated.items()
+            }
         self.actor.optimizer.zero_grad(set_to_none=True)
         with _freeze_module_parameters(self.qw_base):
             noise_loss = self._noise_actor_loss_from_sample(
@@ -2166,43 +2201,60 @@ class HierarchicalRFSDSRL(DSRL):
             )
             noise_loss.backward()
         actor_parameters = tuple(self.actor.parameters())
-        pre_norm = self._gradient_norm(actor_parameters)
+        pre_norm = (
+            self._gradient_norm(actor_parameters)
+            if self.runtime_contract_checks
+            else None
+        )
         if self.noise_actor_gradient_clipping:
             th.nn.utils.clip_grad_norm_(
                 actor_parameters, self.noise_gradient_max_norm
             )
-        post_norm = self._gradient_norm(actor_parameters)
+        post_norm = (
+            self._gradient_norm(actor_parameters)
+            if self.runtime_contract_checks
+            else None
+        )
         self.actor.optimizer.step()
         self.noise_actor_optimizer_steps += 1
         self.noise_policy_version += 1
         self._noise_policy_birth_step = int(self.num_timesteps)
         self.actor.eval()
-        for name, module in unrelated.items():
-            for parameter in module.parameters():
-                pid = id(parameter)
-                prior = before[name].get(pid)
-                if prior is None and parameter.grad is None:
-                    continue
-                if prior is None or parameter.grad is None or not th.equal(
-                    prior, parameter.grad
-                ):
-                    raise RuntimeError(
-                        f"Noise/alpha update changed gradients on {name} parameters"
-                    )
-        return float(noise_loss.item()), alpha_loss_value, pre_norm, post_norm
+        if self.runtime_contract_checks:
+            for name, module in unrelated.items():
+                for parameter in module.parameters():
+                    pid = id(parameter)
+                    prior = before[name].get(pid)
+                    if prior is None and parameter.grad is None:
+                        continue
+                    if prior is None or parameter.grad is None or not th.equal(
+                        prior, parameter.grad
+                    ):
+                        raise RuntimeError(
+                            f"Noise/alpha update changed gradients on {name} parameters"
+                        )
+        return self._metric_scalar(noise_loss), alpha_loss_value, pre_norm, post_norm
 
     def _update_residual_once(
         self, replay_data: HierarchyReplayBufferSamples
-    ) -> tuple[float, float, float]:
+    ) -> tuple[Union[float, th.Tensor], Optional[float], Optional[float]]:
         self.residual_actor.train(True)
         with _freeze_module_parameters(self.qa_joint):
             loss, _ = self._residual_actor_loss(replay_data)
         self.residual_actor_optimizer.zero_grad(set_to_none=True)
         loss.backward()
         parameters = tuple(self.residual_actor.parameters())
-        pre_norm = self._gradient_norm(parameters)
+        pre_norm = (
+            self._gradient_norm(parameters)
+            if self.runtime_contract_checks
+            else None
+        )
         th.nn.utils.clip_grad_norm_(parameters, self.residual_gradient_max_norm)
-        post_norm = self._gradient_norm(parameters)
+        post_norm = (
+            self._gradient_norm(parameters)
+            if self.runtime_contract_checks
+            else None
+        )
         self.residual_actor_optimizer.step()
         self.residual_actor_optimizer_steps += 1
         self.residual_policy_version += 1
@@ -2215,7 +2267,7 @@ class HierarchicalRFSDSRL(DSRL):
         self.residual_target_updates += 1
         self.residual_actor.eval()
         _freeze_target(self.residual_actor_target)
-        return float(loss.item()), pre_norm, post_norm
+        return self._metric_scalar(loss), pre_norm, post_norm
 
     def _branch_ready(self, branch: BranchMode) -> bool:
         return self.replay_buffer.branch_count(branch) >= self.min_branch_replay_transitions
@@ -2399,8 +2451,10 @@ class HierarchicalRFSDSRL(DSRL):
                     update_alpha=profile.alpha > 0,
                 )
                 metrics["noise_actor_loss"].append(noise_loss)
-                metrics["noise_grad_pre"].append(pre)
-                metrics["noise_grad_post"].append(post)
+                if pre is not None:
+                    metrics["noise_grad_pre"].append(pre)
+                if post is not None:
+                    metrics["noise_grad_post"].append(post)
                 if alpha_loss is not None:
                     metrics["alpha_loss"].append(alpha_loss)
         if joint_ready and residual_count > 0:
@@ -2409,8 +2463,10 @@ class HierarchicalRFSDSRL(DSRL):
                     self._sample_branch(BranchMode.JOINT, batch_size)
                 )
                 metrics["residual_actor_loss"].append(loss)
-                metrics["residual_grad_pre"].append(pre)
-                metrics["residual_grad_post"].append(post)
+                if pre is not None:
+                    metrics["residual_grad_pre"].append(pre)
+                if post is not None:
+                    metrics["residual_grad_post"].append(post)
 
         self.hierarchy_train_calls += 1
         self._n_updates += sum(profile.as_dict().values())
@@ -2480,7 +2536,7 @@ class HierarchicalRFSDSRL(DSRL):
         )
         for name, values in metrics.items():
             if values:
-                self.logger.record(f"train/{name}", float(np.mean(values)))
+                self.logger.record(f"train/{name}", self._mean_metric_values(values))
         # Wire the previously-dead Section 10 diagnostics (headwise Q means,
         # twin disagreements, headwise same-QA_joint delta-Q, residual
         # logits/unit/delta norms and saturation, margins, emergency clamp).

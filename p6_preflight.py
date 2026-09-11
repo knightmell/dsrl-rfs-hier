@@ -308,8 +308,27 @@ def _validate_run_name(
     algorithm: str,
     seed: int,
     chunk_budget: int,
+    final_chunk: int | None = None,
 ) -> str:
     result = _required_string(run_name, "name")
+    try:
+        from project_run_naming import parse_run_name
+
+        parsed = parse_run_name(result)
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        if int(parsed["seed"]) != seed:
+            raise ValueError(
+                f"Canonical run name seed {parsed['seed']} != configured seed {seed}"
+            )
+        expected_final = chunk_budget if final_chunk is None else int(final_chunk)
+        if int(parsed["final_steps"]) != expected_final:
+            raise ValueError(
+                "Canonical run name final transition "
+                f"{parsed['final_steps']} != configured final transition {expected_final}"
+            )
+        return result
     required_tokens = (
         init_checkpoint_id,
         algorithm,
@@ -540,6 +559,10 @@ def static_preflight(
             cfg.train.get("rfs_hier_noise_actor_gradient_clipping", True),
             "train.rfs_hier_noise_actor_gradient_clipping",
         )
+        runtime_contract_checks = _required_bool(
+            cfg.train.get("rfs_hier_runtime_contract_checks", True),
+            "train.rfs_hier_runtime_contract_checks",
+        )
         hierarchy_contract = {
             "architecture_version": ARCHITECTURE_VERSION,
             "replay_schema_version": HIERARCHY_REPLAY_SCHEMA_VERSION,
@@ -584,6 +607,7 @@ def static_preflight(
             "qw_teacher_microbatch_size": qw_teacher_microbatch_size,
             "qw_teacher_queries_per_update": qw_teacher_queries_per_update,
             "noise_actor_gradient_clipping": noise_actor_gradient_clipping,
+            "runtime_contract_checks": runtime_contract_checks,
         }
     safe_boundary_chunks = n_envs * train_freq
     if chunk_budget % safe_boundary_chunks != 0:
@@ -824,6 +848,7 @@ def static_preflight(
         algorithm=algorithm,
         seed=seed,
         chunk_budget=chunk_budget,
+        final_chunk=stop_after_chunk_transitions,
     )
     seed_plan = resolve_seed_plan(cfg)
 
