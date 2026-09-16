@@ -23,7 +23,15 @@ from hydra.core.hydra_config import HydraConfig
 BASE_PATH = Path(__file__).resolve().parent
 sys.path.append(str(BASE_PATH / "dppo"))
 
-from env_utils import ACTION_CHUNK_EARLY_BREAK, ActionChunkWrapper, ObservationWrapperGym
+from env_utils import (
+    ACTION_CHUNK_EARLY_BREAK,
+    ActionChunkWrapper,
+    ObservationWrapperGym,
+    ObservationWrapperRobomimic,
+    ObservationWrapperD3IL,
+    make_d3il_env,
+    make_robomimic_env,
+)
 from p6_checkpointing import (
     P6CheckpointManager,
     P6IntentionalInterruption,
@@ -249,16 +257,38 @@ def _make_policy_kwargs(cfg: Any) -> dict[str, Any]:
 
 
 def _make_locomotion_environment(cfg: Any, normalization_path: Path):
-    # Import lazily so CPU-only unit tests can exercise runner state classes
-    # without requiring the legacy D4RL/MuJoCo environment.
-    import d4rl  # noqa: F401
-    import d4rl.gym_mujoco  # noqa: F401
+    domain = str(cfg.env.get("domain", "gym"))
+    if domain == "robomimic":
+        raw_environment = make_robomimic_env(
+            env=str(cfg.env_name),
+            normalization_path=str(normalization_path),
+            low_dim_keys=list(cfg.env.wrappers.robomimic_lowdim.low_dim_keys),
+            dppo_path=str(cfg.dppo_path),
+        )
+        normalized_environment = ObservationWrapperRobomimic(
+            raw_environment,
+            reward_offset=float(cfg.env.reward_offset),
+        )
+    elif domain == "d3il":
+        raw_environment = make_d3il_env(env=str(cfg.env_name))
+        normalized_environment = ObservationWrapperD3IL(
+            raw_environment,
+            normalization_path=str(normalization_path),
+            success_reward=float(cfg.env.best_reward_threshold_for_success),
+        )
+    elif domain == "gym":
+        # Import lazily so CPU-only unit tests can exercise runner state
+        # classes without requiring the legacy D4RL/MuJoCo environment.
+        import d4rl  # noqa: F401
+        import d4rl.gym_mujoco  # noqa: F401
 
-    raw_environment = gym.make(cfg.env_name)
-    normalized_environment = ObservationWrapperGym(
-        raw_environment,
-        normalization_path,
-    )
+        raw_environment = gym.make(cfg.env_name)
+        normalized_environment = ObservationWrapperGym(
+            raw_environment,
+            normalization_path,
+        )
+    else:
+        raise ValueError(f"Unsupported P6 environment domain: {domain!r}")
     return ActionChunkWrapper(
         normalized_environment,
         cfg,

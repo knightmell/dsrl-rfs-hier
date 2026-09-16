@@ -43,8 +43,8 @@ python -m pip install \
   torch==2.4.0 torchvision==0.19.0 \
   --index-url https://download.pytorch.org/whl/cu121
 
-# 项目本地包和 Gym 依赖。
-python -m pip install -e './dppo[gym]'
+# 项目本地包和当前 Gym / Robomimic / D3IL 依赖。
+python -m pip install -e './dppo[gym,robomimic,d3il]'
 python -m pip install -e './stable-baselines3'
 
 # 当前任务实际会用到的固定运行依赖。
@@ -63,9 +63,22 @@ python -m pip install \
   'pytest==8.4.2'
 ```
 
-`dppo[gym]` 会安装 `d4rl`、`cython<3` 和 `patchelf`。不需要为这四个
-MuJoCo 训练任务额外安装 ROS、robomimic 或 VLA 环境；那些是本机其他项目的
-依赖，不应混入本实验环境。
+`dppo[robomimic]` 固定使用 `robomimic==0.3.0` 与 Robosuite v1.4.1。
+Avoid-M1 还需要当前实测的 D3IL fork：
+
+```bash
+git clone https://github.com/allenzren/d3il ../d3il
+git -C ../d3il checkout 139dbf9b114d0f6192e5433ebcffeb0fc17098f4
+python -m pip install -e '../d3il/environments/d3il'
+python -m pip install -e '../d3il/environments/d3il/envs/gym_avoiding_env'
+```
+
+远端无显示器时，在训练 shell 中设置：
+
+```bash
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+```
 
 ## 3. 放置不可随 Git 分发的模型与归一化文件
 
@@ -79,6 +92,58 @@ dppo/log/gym-pretrain/hopper-medium-v2_pre_diffusion_mlp_ta4_td20/
   2024-06-12_23-10-05/checkpoint/state_3000.pt
 dppo/log/gym/halfcheetah-medium-v2/normalization.npz
 dppo/log/gym/hopper-medium-v2/normalization.npz
+
+# Robomimic Can
+dppo/log/robomimic-pretrain/can/can_pre_diffusion_mlp_ta4_td20/
+  2024-06-28_13-29-54/checkpoint/state_5000.pt
+dppo/log/robomimic/can/normalization.npz
+
+# Robomimic Square
+dppo/log/robomimic-pretrain/square/
+  square_pre_diffusion_mlp_ta4_td100_ddim-100steps/
+  2025-04-11_19-13-26_44/checkpoint/state_3000.pt
+dppo/log/robomimic/square/normalization.npz
+
+# D3IL Avoid-M1
+dppo/log/d3il-pretrain/m1/avoid_d56_r12_pre_diffusion_mlp_ta4_td20/
+  2024-07-06_22-50-07/checkpoint/state_10000.pt
+dppo/data/d3il/avoid_m1/normalization.npz
+```
+
+Can 与 Square 文件可从公开镜像直接放入配置期望的 `dppo/log` 布局：
+
+```bash
+python -m pip install 'huggingface_hub[cli]'
+hf download knightnemo/vam-robomimic-assets \
+  robomimic-pretrain/can/can_pre_diffusion_mlp_ta4_td20/2024-06-28_13-29-54/checkpoint/state_5000.pt \
+  robomimic-pretrain/square/square_pre_diffusion_mlp_ta4_td100_ddim-100steps/2025-04-11_19-13-26_44/checkpoint/state_3000.pt \
+  robomimic/can/normalization.npz \
+  robomimic/square/normalization.npz \
+  --local-dir dppo/log
+```
+
+Avoid-M1 的两个文件从已有训练机或 DSRL 发布资产复制到上述路径。全部资产在
+启动前用下面的固定哈希核对：
+
+```bash
+sha256sum \
+  dppo/log/robomimic-pretrain/can/can_pre_diffusion_mlp_ta4_td20/2024-06-28_13-29-54/checkpoint/state_5000.pt \
+  dppo/log/robomimic/can/normalization.npz \
+  dppo/log/robomimic-pretrain/square/square_pre_diffusion_mlp_ta4_td100_ddim-100steps/2025-04-11_19-13-26_44/checkpoint/state_3000.pt \
+  dppo/log/robomimic/square/normalization.npz \
+  dppo/log/d3il-pretrain/m1/avoid_d56_r12_pre_diffusion_mlp_ta4_td20/2024-07-06_22-50-07/checkpoint/state_10000.pt \
+  dppo/data/d3il/avoid_m1/normalization.npz
+```
+
+期望依次为：
+
+```text
+61851045e6b516807826e3bda4270c9e4a086023f2dd85af00eadb59d9b98a1b
+a4bb04c498625bfad0ee6faae21674c0a06879cd9f9614bbd2da41a7d0dc1c1a
+e4b391aedc33e8a94bb5cbe25fc737159b64963f51bec22c5e3e104dc1e32373
+68ec0abfd989d5f0121f0e9a1dd074b49f859c167ff941c70d2eff8006074ff3
+7a420985fd213f79ac03b13f62c3e75c5ae33e6f5c82343e75ad8d4ad0ba230b
+24d0c2b650fe26832e0de0474c06d2a989c8a989b0233d039ff1e6b1a52cdc68
 ```
 
 启动前不要凭文件名猜模型是否正确。配置的 preflight 会检查 Frozen-DDIM
@@ -94,6 +159,7 @@ nvidia-smi
 
 python - <<'PY'
 import torch, gym, gymnasium, mujoco, hydra
+import robomimic, robosuite, gym_avoiding
 print('torch      =', torch.__version__)
 print('torch cuda =', torch.version.cuda)
 print('cuda ok    =', torch.cuda.is_available())
@@ -118,7 +184,8 @@ python -m pip check
 - 一张 48GB RTX 4090 优先一次跑一个训练进程；两个 MuJoCo P6 进程会同时
   占用大量 CPU replay 内存。
 - 训练前保留至少 24GB 主机可用内存，并确认 GPU 空闲显存至少 16GB。
-- `n_envs=10`、`train_freq=1`、`UTD=20`、`batch_size=256`、`QW K=4`
-  是当前配置的一部分，不要在复现实验时顺手改掉。
+- 新 Can/Square/Avoid 配置使用 `n_envs=4`、`train_freq=1`、`batch_size=256`；
+  matched DSRL 使用 UTD=20，VS-Hier 显式记录 Gaussian QW、K=4、NoClip
+  和各任务 BASE/RES 边界。不要为提速顺手修改这些算法参数。
 - 实验目录、TensorBoard、replay 和 checkpoint 放在本机磁盘，不要让两个
   机器共享一个正在写入的 run directory。

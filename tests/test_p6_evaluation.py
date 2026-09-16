@@ -52,6 +52,13 @@ class VariableLengthEnvironment:
         return None
 
 
+class SuccessfulEnvironment(VariableLengthEnvironment):
+    def step(self, action):
+        observation, reward, terminated, truncated, info = super().step(action)
+        info["is_success"] = bool(self.steps >= 2)
+        return observation, reward, terminated, truncated, info
+
+
 class StochasticExecutedPolicy:
     def __init__(self):
         self.policy = nn.Sequential(nn.Linear(1, 2), nn.Dropout(0.2))
@@ -165,6 +172,22 @@ def test_eval_reports_residual_saturation_split_by_outcome():
     assert by_outcome["healthy"]["episode_count"] == 2.0
     assert by_outcome["healthy"]["residual_tanh_saturation_fraction_mean"] == 0.0
     assert by_outcome["healthy"]["effective_residual_l2_mean"] > 0.0
+
+
+def test_eval_reports_task_success_rate():
+    result = evaluate_exact_episodes(
+        model=StochasticExecutedPolicy(),
+        make_environment=SuccessfulEnvironment,
+        environment_seeds=[10, 11, 12],
+        policy_seed_start=900,
+        deterministic=False,
+        action_chunk=4,
+        max_episode_primitive_steps=20,
+        evaluation_mode="current_base_only",
+    )
+
+    assert [row["success"] for row in result["episodes"]] == [True, True, True]
+    assert result["summary"]["success_rate"] == 1.0
 
 
 def test_exact_n_is_batch_size_invariant_and_restores_rng_and_modes():
@@ -282,6 +305,7 @@ def test_evaluation_persists_atomic_json_csv_tensorboard_and_components(tmp_path
     } >= {
         "eval/online/raw_return_mean",
         "eval/online/d4rl_score_mean",
+        "eval/online/success_rate",
         "eval/online/chunk_transitions",
         "eval/online/nominal_primitive_steps",
         "eval/online/actual_primitive_env_steps",

@@ -57,6 +57,12 @@ def make_robomimic_env(render=False, env='square', normalization_path=None, low_
 	return env
 
 
+def make_d3il_env(render=False, env='avoiding-m5'):
+	# Importing the package registers the Avoid Gym environments.
+	import gym_avoiding  # noqa: F401
+	return gym.make(env, render=render)
+
+
 class ObservationWrapperRobomimic(gym.Env):
 	def __init__(
 		self,
@@ -85,6 +91,12 @@ class ObservationWrapperRobomimic(gym.Env):
 
 	def step(self, action):
 		raw_obs, reward, done, info = self.env.step(action)
+		info = dict(info)
+		# Robomimic's sparse task reward is one on success.  Preserve that
+		# semantic before applying the historical DSRL reward offset so the
+		# generic P6 evaluator can report task success rather than a locomotion-
+		# specific early-fall metric.
+		info["is_success"] = bool(float(reward) >= float(self.reward_offset))
 		reward = (reward - self.reward_offset)
 		obs = raw_obs['state'].flatten()
 		return obs, reward, done, info
@@ -149,6 +161,74 @@ class ObservationWrapperGym(gym.Env):
 	def unnormalize_action(self, action):
 		action = (action + 1) / 2
 		return action * (self.action_max - self.action_min) + self.action_min
+
+
+class ObservationWrapperD3IL(gym.Env):
+	"""Normalize D3IL state/actions while preserving Avoid success semantics."""
+
+	def __init__(self, env, normalization_path, success_reward=2.0):
+		self.env = env
+		normalization = np.load(normalization_path)
+		self.obs_min = normalization["obs_min"]
+		self.obs_max = normalization["obs_max"]
+		self.action_min = normalization["action_min"]
+		self.action_max = normalization["action_max"]
+		self.success_reward = float(success_reward)
+		self.observation_space = spaces.Box(
+			low=-np.ones_like(self.obs_min, dtype=np.float32),
+			high=np.ones_like(self.obs_max, dtype=np.float32),
+			dtype=np.float32,
+		)
+		# D3IL's low-dimensional policy is trained in normalized action space.
+		# The raw environment space is roughly +/- 0.01 and must not be exposed
+		# to Stable-Baselines as the policy output range.
+		self.action_space = spaces.Box(
+			low=-np.ones_like(self.action_min, dtype=np.float32),
+			high=np.ones_like(self.action_max, dtype=np.float32),
+			dtype=np.float32,
+		)
+
+	def seed(self, seed=None):
+		if hasattr(self.env, "seed"):
+			return self.env.seed(seed)
+		if seed is not None:
+			np.random.seed(seed)
+		return [seed]
+
+	def reset(self, **kwargs):
+		seed = kwargs.get("seed", None)
+		options = kwargs.get("options", {}) or {}
+		if seed is None:
+			seed = options.get("seed", None)
+		if seed is not None:
+			self.seed(seed)
+		raw_obs = self.env.reset()
+		if isinstance(raw_obs, tuple):
+			raw_obs = raw_obs[0]
+		return self.normalize_obs(raw_obs)
+
+	def step(self, action):
+		raw_obs, reward, done, info = self.env.step(
+			self.unnormalize_action(action)
+		)
+		info = dict(info)
+		info["is_success"] = bool(float(reward) >= self.success_reward)
+		return self.normalize_obs(raw_obs), reward, done, info
+
+	def normalize_obs(self, obs):
+		return 2 * (
+			(obs - self.obs_min) / (self.obs_max - self.obs_min + 1e-6) - 0.5
+		)
+
+	def unnormalize_action(self, action):
+		action = (np.asarray(action) + 1) / 2
+		return action * (self.action_max - self.action_min) + self.action_min
+
+	def render(self, **kwargs):
+		return self.env.render(**kwargs)
+
+	def close(self):
+		return self.env.close()
 	
 
 class ActionChunkWrapper(gymnasium.Env):
@@ -262,6 +342,10 @@ class ActionChunkWrapper(gymnasium.Env):
 
 		actual_primitive_steps = len(reward_)
 		nominal_primitive_steps = self.act_steps
+		if any("is_success" in item for item in info_):
+			info["is_success"] = any(
+				bool(item.get("is_success", False)) for item in info_
+			)
 		info.update(
 			{
 				"action_chunk_termination_semantics": (

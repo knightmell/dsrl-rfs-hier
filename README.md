@@ -31,6 +31,21 @@ Diffusion steering via reinforcement learning (DSRL) is a lightweight and effici
 旧 P6 计划、gate、runbook 和 handoff 已移动到 `docs/archive/`，不作为当前
 算法或实验事实的直接证据。
 
+### 当前快照（2026-09-16）
+
+- 算法主线是冻结 DDIM、`QA_base → QW_base → latent actor` 的 BASE 信用路径，
+  与 `QA_joint → residual actor` 的 RES 信用路径分离；完整定义见
+  [`CURRENT_ALGORITHM.md`](docs/CURRENT_ALGORITHM.md)。
+- 本机正在运行 Can 与 Avoid-M1 的 seed-1 VS-Hier/matched-DSRL 配对实验。
+  Square seed-1/2 本地短跑已按用户要求停止，将在其他服务器从 fresh 状态重跑；
+  这些未到首个检查点的本地 Square 进度不是结果证据。
+- Policy Decorator (matched)、DPPO 和 DIPO 的三任务 seed-1 训练产物已登记；
+  Policy Decorator 已有 0--800k 的 10-episode 曲线，所有方法的最终
+  100-episode 评估仍须按登记表逐项完成。
+
+实验状态、结果路径、历史尝试的排除规则以及尚缺项目只在
+[`EXPERIMENT_REGISTRY.md`](docs/EXPERIMENT_REGISTRY.md) 维护。
+
 ## 最短阅读路径（新服务器 / 新协作者）
 
 为了快速了解当前项目，不需要从旧 handoff 或全部代码开始。按下面顺序阅读即可：
@@ -112,6 +127,121 @@ print(torch.cuda.get_device_name(0))
 PY
 python -m pip check
 ```
+
+## Can / Square / Avoid-M1：新服务器直接训练
+
+这三个任务的完整配置已经固化，不要从旧 P6 文档重新拼参数：
+
+| Task | VS-Hier config | matched DSRL config | Chunks | VS-Hier split |
+|---|---|---|---:|---:|
+| Can | `p6_can` | `p6_can_matched_dsrl_300k` | 300k | 100k BASE + 200k RES |
+| Square | `p6_square` | `p6_square_matched_dsrl_500k` | 500k | 200k BASE + 300k RES |
+| Avoid-M1 | `p6_avoid_m1` | `p6_avoid_m1_matched_dsrl_100k` | 100k | 25k BASE + 75k RES |
+
+共同参数是 seed 显式指定、4 environments、action chunk 4、batch 256。
+VS-Hier 使用 Gaussian QW、K=4、state batch 256、1024 teacher queries、NoClip，
+进入 RES 后保持 BASE 更新并额外使用 residual UTD=4；matched DSRL 使用 UTD=20。
+模型资产、D3IL 安装命令和固定 SHA-256 见
+[`docs/ENVIRONMENT_SETUP.md`](docs/ENVIRONMENT_SETUP.md)。
+
+### 1. 启动前检查解析后的配置
+
+不要只看 YAML 文件名。以下命令不启动训练，只显示 Hydra 最终生效值：
+
+```bash
+conda activate dsrl
+ROOT="$PWD"
+PY="$CONDA_PREFIX/bin/python"
+export CUDA_VISIBLE_DEVICES=0
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+
+check_config () {
+  "$PY" "$ROOT/p6_train.py" --config-name "$1" seed="$2" \
+    use_wandb=false "+runtime=fast" --cfg job --resolve |
+    rg '^(algorithm|total_timesteps|name|seed|env_name|act_steps|  n_envs|  batch_size|  utd|  rfs_hier_phase_b_steps|  rfs_hier_phase_r_steps|  rfs_hier_qw_teacher_source|  rfs_hier_qw_candidates_per_state|  rfs_hier_qw_state_batch_size|  rfs_hier_noise_actor_gradient_clipping|  prefill_artifact_path|  final_eval_episodes):'
+}
+
+check_config p6_can 1
+check_config p6_can_matched_dsrl_300k 1
+check_config p6_square 1
+check_config p6_square_matched_dsrl_500k 1
+check_config p6_avoid_m1 1
+check_config p6_avoid_m1_matched_dsrl_100k 1
+```
+
+确认 full/control 的 task、seed、环境数、冻结策略、prefill 路径和最终预算相同；
+两者只保留方法定义要求的更新差异。配置解析后建议只跑一个聚焦测试：
+
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 "$PY" -m pytest -q tests/test_p6_evaluation.py
+```
+
+### 2. 启动一个配对任务
+
+下面三段任选一段。每个 `p6_launcher.py` 会立即返回 durable wrapper 信息，
+因此顺序执行两条命令也会并行训练。修改 seed 时同时修改 `SEED`；run name 会自动
+反映 seed。不要让两台服务器写同一个 `RUN`。
+
+Can：
+
+```bash
+SEED=1
+VS_RUN="$ROOT/logs/p6/can_s${SEED}_noclip_k4_100k_300k_full"
+DSRL_RUN="$ROOT/logs/p6/fresh_frozen_ddim_can_dsrl_na_control_seed${SEED}_300000chunks"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$VS_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_can seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$VS_RUN"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$DSRL_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_can_matched_dsrl_300k seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$DSRL_RUN"
+```
+
+Square：
+
+```bash
+SEED=1
+VS_RUN="$ROOT/logs/p6/square_s${SEED}_noclip_k4_200k_500k_full"
+DSRL_RUN="$ROOT/logs/p6/fresh_frozen_ddim_square_dsrl_na_control_seed${SEED}_500000chunks"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$VS_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_square seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$VS_RUN"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$DSRL_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_square_matched_dsrl_500k seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$DSRL_RUN"
+```
+
+Avoid-M1：
+
+```bash
+SEED=1
+VS_RUN="$ROOT/logs/p6/avoidm1_s${SEED}_noclip_k4_25k_100k_full"
+DSRL_RUN="$ROOT/logs/p6/fresh_frozen_ddim_avoidm1_dsrl_na_control_seed${SEED}_100000chunks"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$VS_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_avoid_m1 seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$VS_RUN"
+"$PY" "$ROOT/p6_launcher.py" --run-dir "$DSRL_RUN" -- \
+  "$PY" "$ROOT/p6_train.py" --config-name p6_avoid_m1_matched_dsrl_100k seed="$SEED" \
+  use_wandb=false "+runtime=fast" "logdir=$DSRL_RUN"
+```
+
+### 3. 确认不是“只启动、没训练”
+
+启动后只需检查下面四类证据，无需重跑整套 gate：
+
+```bash
+cat "$VS_RUN/launcher_status.json"
+cat "$VS_RUN/run_manifest.json" | rg 'run_status|prefill_status|training_start_chunk_transitions'
+tail -n 40 "$VS_RUN"/stdout_*.log
+ps -eo pid,stat,etime,%cpu,%mem,rss,cmd | rg 'p6_(train|job_wrapper).*p6_(can|square|avoid)'
+nvidia-smi
+```
+
+有效启动必须同时满足：wrapper/learner 进程存在、`prefill_status` 最终变为
+`verified_and_loaded`、日志出现非零 `chunk_transitions` 和 optimizer counter。
+Robomimic 的首个日志点会先执行初始评估；Square 的 100-step frozen diffusion 加
+K=4 teacher 查询最慢，首个 400-chunk 块需要数分钟，不应仅因这段等待判为停滞。
+主指标是 Can/Square success rate，以及 Avoid-M1 desired-mode success rate。
 
 ## 加速训练：如何使用 `runtime/fast`
 

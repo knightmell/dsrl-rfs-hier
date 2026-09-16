@@ -177,6 +177,7 @@ def persist_evaluation(
         "d4rl_score_mean",
         "actual_primitive_length_mean",
         "early_fall_rate",
+        "success_rate",
     ):
         tensorboard_writer.add_scalar(
             f"{tensorboard_tag}/{metric}",
@@ -260,6 +261,7 @@ def evaluate_exact_episodes(
                     episode_nominal = 0
                     episode_actual = 0
                     early_termination_chunks = 0
+                    success = False
                     terminated = False
                     truncated = False
                     decomposition: dict[str, list[float]] = {
@@ -301,6 +303,7 @@ def evaluate_exact_episodes(
                             info["early_termination_within_chunk"]
                         )
                         raw_return += float(reward)
+                        success = bool(success or info.get("is_success", False))
 
                         if components is not None:
                             action_base = np.asarray(components["action_base"])
@@ -372,6 +375,7 @@ def evaluate_exact_episodes(
                         "terminated": bool(terminated),
                         "truncated": bool(truncated),
                         "early_fall": early_fall,
+                        "success": success,
                         **{
                             key: _mean_or_nan(values) if values else None
                             for key, values in decomposition.items()
@@ -436,6 +440,9 @@ def evaluate_exact_episodes(
         ),
         "early_fall_rate": _mean_or_nan(
             [float(episode["early_fall"]) for episode in episodes]
+        ),
+        "success_rate": _mean_or_nan(
+            [float(episode["success"]) for episode in episodes]
         ),
         # Residual saturation and effect split by episode outcome: the
         # bang-bang rescue signal is that falling episodes carry a large

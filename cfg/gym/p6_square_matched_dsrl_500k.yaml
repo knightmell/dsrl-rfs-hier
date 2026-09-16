@@ -1,0 +1,10 @@
+defaults:
+  - p6_square
+  - _self_
+
+algorithm: dsrl_na
+name: fresh_frozen_ddim_square_dsrl_na_control_seed${seed}_${total_timesteps}chunks
+logdir: ${log_dir}/p6/${name}
+
+p6:
+  algorithm_label: dsrl_na_control

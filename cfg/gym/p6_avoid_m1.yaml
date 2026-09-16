@@ -1,0 +1,157 @@
+defaults:
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+
+algorithm: dsrl_na_rfs_hier
+rfs_hier_legacy_checkpoint_path: null
+total_timesteps: 100000
+name: avoidm1_s${seed}_noclip_k4_25k_100k_full
+logdir: ${log_dir}/p6/${name}
+use_wandb: false
+seed: 1
+device: cuda:0
+env_name: avoiding-m5
+mode: d56_r12
+log_dir: ./logs
+base_policy_path: ./dppo/log/d3il-pretrain/m1/avoid_d56_r12_pre_diffusion_mlp_ta4_td20/2024-07-06_22-50-07/checkpoint/state_10000.pt
+normalization_path: ./dppo/data/d3il/avoid_m1/normalization.npz
+dppo_path: ./dppo
+obs_dim: 4
+action_dim: 2
+cond_steps: 1
+act_steps: 4
+load_offline_data: false
+deterministic_eval: false
+
+env:
+  domain: d3il
+  n_envs: 4
+  n_eval_envs: 1
+  name: ${env_name}
+  max_episode_steps: 100
+  reset_at_iteration: true
+  save_video: false
+  best_reward_threshold_for_success: 2
+  wrappers:
+    d3il_lowdim:
+      normalization_path: ${normalization_path}
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: false
+
+train:
+  layer_size: 128
+  num_layers: 3
+  buffer_size_sac: 150000
+  buffer_size_na: 150000
+  tau: 0.005
+  actor_lr: 3e-4
+  batch_size: 256
+  train_freq: 1
+  utd: 20
+  noise_critic_grad_steps: 10
+  use_layer_norm: true
+  discount: 0.99
+  ent_coef: -1
+  target_ent: 0.0
+  init_rollout_steps: 501
+  action_magnitude: 1.5
+  n_critics: 2
+  critic_backup_combine_type: min
+  rfs_residual_scale: 0.1
+  rfs_residual_log_std_init: -5.0
+  rfs_hier_residual_net_arch: [128, 128]
+  rfs_hier_residual_activation: silu
+  rfs_hier_residual_lr: 3e-4
+  rfs_hier_qa_joint_lr: 3e-4
+  rfs_hier_noise_gradient_max_norm: 1.0
+  rfs_hier_residual_gradient_max_norm: 1.0
+  rfs_hier_train_freq: 1
+  rfs_hier_schedule_profile: fresh_frozen_ddim_2p5m_additive_res
+  rfs_hier_phase_b_steps: 25000
+  rfs_hier_phase_r_steps: 75000
+  rfs_hier_phase_j_steps: 0
+  rfs_hier_phase_j_enabled: false
+  rfs_hier_beta_ramp_steps: 25000
+  rfs_hier_beta_hold_steps: 10000
+  rfs_hier_beta_floor: 0.02
+  rfs_hier_beta_target: 0.1
+  rfs_hier_base_lane_probability: 0.5
+  rfs_hier_min_branch_replay_transitions: 256
+  rfs_hier_qa_joint_shadow_in_b: true
+  rfs_hier_cross_lane_ratio: 0.25
+  rfs_hier_qa_base_cross_lane: false
+  rfs_hier_residual_exploration_std: 0.02
+  rfs_hier_qw_teacher_source: gaussian
+  rfs_hier_qw_candidates_per_state: 4
+  rfs_hier_qw_state_batch_size: 256
+  rfs_hier_qw_teacher_microbatch_size: 1024
+  rfs_hier_noise_actor_gradient_clipping: false
+
+p6:
+  algorithm_label: dsrl_na_rfs_hier
+  architecture_version: dsrl_na_rfs_hier_three_critic_v1
+  replay_schema_version: hierarchy_tagged_replay_v1
+  action_chunk_termination_semantics: early_break_on_done
+  environment_resume_mode: reset_boundary_discontinuous
+  train_env_seed: ${eval:'1000 + ${seed}'}
+  eval_env_seed: ${eval:'2000 + ${seed}'}
+  prefill_env_seed: ${eval:'3000 + ${seed}'}
+  prefill_policy_seed: ${eval:'4000 + ${seed}'}
+  eval_seed_start: 10000
+  eval_seed_count: 100
+  eval_policy_seed_start: 20000
+  pilot_n_envs: 4
+  expected_init_checkpoint_steps: 0
+  expected_action_chunk: 4
+  expected_action_dimension: 2
+  expected_ddim_steps: 10
+  expected_denoised_clip_value: 1.0
+  expected_exec_action_low: -1.0
+  expected_exec_action_high: 1.0
+  prefill_source: fresh_frozen_ddim
+  init_checkpoint_id: fresh_frozen_ddim
+  init_checkpoint_sha256: null
+  frozen_ddim_sha256: 7a420985fd213f79ac03b13f62c3e75c5ae33e6f5c82343e75ad8d4ad0ba230b
+  normalization_sha256: 24d0c2b650fe26832e0de0474c06d2a989c8a989b0233d039ff1e6b1a52cdc68
+  prefill_artifact_path: ${log_dir}/p6-prefill/avoidm1_s${seed}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 100000
+  online_eval_episodes: 10
+  final_eval_episodes: 100
+  evaluation_batch_size: 1
+  diagnostics_interval_updates: 100
+  test_cadence_override: false
+  resume_bundle_path: null
+  stop_after_chunk_transitions: null
+
+model:
+  _target_: model.diffusion.diffusion_eval.DiffusionEval
+  ft_denoising_steps: 0
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  randn_clip_value: 3
+  network_path: ${base_policy_path}
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims: [512, 512, 512]
+    activation_type: ReLU
+    residual_style: true
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    horizon_steps: ${act_steps}
+    action_dim: ${action_dim}
+  horizon_steps: ${act_steps}
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: 20
+  device: ${device}
+  use_ddim: true
+  ddim_steps: 10
+  controllable_noise: true

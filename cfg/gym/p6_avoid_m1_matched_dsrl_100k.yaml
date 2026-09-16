@@ -1,0 +1,10 @@
+defaults:
+  - p6_avoid_m1
+  - _self_
+
+algorithm: dsrl_na
+name: fresh_frozen_ddim_avoidm1_dsrl_na_control_seed${seed}_${total_timesteps}chunks
+logdir: ${log_dir}/p6/${name}
+
+p6:
+  algorithm_label: dsrl_na_control
