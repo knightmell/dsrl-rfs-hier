@@ -120,11 +120,11 @@ p6:
   frozen_ddim_sha256: 7a420985fd213f79ac03b13f62c3e75c5ae33e6f5c82343e75ad8d4ad0ba230b
   normalization_sha256: 24d0c2b650fe26832e0de0474c06d2a989c8a989b0233d039ff1e6b1a52cdc68
   prefill_artifact_path: ${log_dir}/p6-prefill/avoidm1_s${seed}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
-  # Five curve nodes: 0, 25k, 50k, 75k, 100k. Avoid-M1 is short enough that
-  # this cadence exposes fast saturation.
-  online_eval_interval_chunk_transitions: 25000
-  model_checkpoint_interval_chunk_transitions: 25000
-  replay_checkpoint_interval_chunk_transitions: 25000
+  # Eleven curve nodes: 0, 10k, ..., 100k. Avoid-M1 is short enough that this
+  # cadence exposes fast saturation.
+  online_eval_interval_chunk_transitions: 10000
+  model_checkpoint_interval_chunk_transitions: 10000
+  replay_checkpoint_interval_chunk_transitions: 10000
   online_eval_episodes: 100
   online_evaluation_modes: [current_full_hierarchy]
   final_eval_episodes: 100

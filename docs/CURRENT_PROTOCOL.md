@@ -100,9 +100,9 @@ cadence is task-specific and belongs in the task YAML, not in a runtime overlay:
 
 | Task | Curve milestones (chunk transitions) | Rationale |
 |---|---|---|
-| Can | 0, 50k, 100k, 150k, 200k, 250k, 300k | Seven points across the 300k initial budget. |
-| Square | 0, 100k, 200k, 300k, 400k, 500k | Square's 100-step DDIM evaluation makes a denser cadence disproportionately costly. |
-| Avoid-M1 | 0, 25k, 50k, 75k, 100k | Five points expose fast saturation in the short 100k budget. |
+| Can | 0, 25k, 50k, ..., 300k | Thirteen points across the 300k initial budget. |
+| Square | 0, 50k, 100k, ..., 500k | Eleven points across the 500k initial budget. |
+| Avoid-M1 | 0, 10k, 20k, ..., 100k | Eleven points expose fast saturation in the short 100k budget. |
 
 This policy applies to future launches only. A completed run cannot recover an
 unwritten intermediate model; its existing short evaluation remains historical

@@ -125,11 +125,11 @@ p6:
   frozen_ddim_sha256: e4b391aedc33e8a94bb5cbe25fc737159b64963f51bec22c5e3e104dc1e32373
   normalization_sha256: 68ec0abfd989d5f0121f0e9a1dd074b49f859c167ff941c70d2eff8006074ff3
   prefill_artifact_path: ${log_dir}/p6-prefill/square_s${seed}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
-  online_eval_interval_chunk_transitions: 100000
-  model_checkpoint_interval_chunk_transitions: 100000
-  replay_checkpoint_interval_chunk_transitions: 100000
-  # Six curve nodes: 0, 100k, ..., 500k. Square uses 100 DDIM steps, so a
-  # denser 100-episode cadence would disproportionately dominate wall clock.
+  # Eleven curve nodes: 0, 50k, ..., 500k. Square uses 100 DDIM steps, so the
+  # cadence remains less dense than the short Avoid-M1 task.
+  online_eval_interval_chunk_transitions: 50000
+  model_checkpoint_interval_chunk_transitions: 50000
+  replay_checkpoint_interval_chunk_transitions: 50000
   online_eval_episodes: 100
   online_evaluation_modes: [current_full_hierarchy]
   final_eval_episodes: 100

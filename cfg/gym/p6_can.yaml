@@ -127,11 +127,11 @@ p6:
   frozen_ddim_sha256: 61851045e6b516807826e3bda4270c9e4a086023f2dd85af00eadb59d9b98a1b
   normalization_sha256: a4bb04c498625bfad0ee6faae21674c0a06879cd9f9614bbd2da41a7d0dc1c1a
   prefill_artifact_path: ${log_dir}/p6-prefill/can_s${seed}_env${p6.prefill_env_seed}_policy${p6.prefill_policy_seed}_nenv${env.n_envs}_tagged_v1.npz
-  # Seven curve nodes: 0, 50k, ..., 300k. Evaluation and resumable state are
+  # Thirteen curve nodes: 0, 25k, ..., 300k. Evaluation and resumable state are
   # aligned so every plotted point can be reproduced.
-  online_eval_interval_chunk_transitions: 50000
-  model_checkpoint_interval_chunk_transitions: 50000
-  replay_checkpoint_interval_chunk_transitions: 50000
+  online_eval_interval_chunk_transitions: 25000
+  model_checkpoint_interval_chunk_transitions: 25000
+  replay_checkpoint_interval_chunk_transitions: 25000
   online_eval_episodes: 100
   online_evaluation_modes: [current_full_hierarchy]
   final_eval_episodes: 100
