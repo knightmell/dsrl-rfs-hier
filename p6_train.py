@@ -1763,6 +1763,36 @@ def main(cfg: Any) -> None:
         if matched_dsrl_model is None and not _run_is_fresh(cfg, algorithm):
             raise RuntimeError("Authenticated matched DSRL evaluator is missing")
 
+        default_evaluation_modes = (
+            (
+                "current_base_only",
+                "current_full_hierarchy",
+                "reference_base",
+            )
+            + (("matched_dsrl",) if matched_dsrl_model is not None else ())
+            if algorithm == HIERARCHY_ALGORITHM
+            else ("current_base_only",)
+        )
+        configured_online_modes = cfg.p6.get("online_evaluation_modes", None)
+        if configured_online_modes is None:
+            online_evaluation_modes = default_evaluation_modes
+        else:
+            if isinstance(configured_online_modes, str):
+                raise ValueError("p6.online_evaluation_modes must be a non-empty list")
+            online_evaluation_modes = tuple(
+                str(mode) for mode in configured_online_modes
+            )
+            if not online_evaluation_modes:
+                raise ValueError("p6.online_evaluation_modes must not be empty")
+            unknown_modes = set(online_evaluation_modes) - set(
+                default_evaluation_modes
+            )
+            if unknown_modes:
+                raise ValueError(
+                    "p6.online_evaluation_modes is incompatible with this run: "
+                    f"{sorted(unknown_modes)}"
+                )
+
         def evaluate_modes(
             *,
             chunk: int,
@@ -1770,22 +1800,12 @@ def main(cfg: Any) -> None:
             actual_primitive_env_steps: int,
             episode_count: int,
             artifact_label: str,
+            evaluation_modes: tuple[str, ...] | None = None,
         ) -> dict[str, Any]:
             modes = (
-                (
-                    (
-                        "current_base_only",
-                        "current_full_hierarchy",
-                        "reference_base",
-                    )
-                    + (
-                        ("matched_dsrl",)
-                        if matched_dsrl_model is not None
-                        else ()
-                    )
-                )
-                if algorithm == HIERARCHY_ALGORITHM
-                else ("current_base_only",)
+                default_evaluation_modes
+                if evaluation_modes is None
+                else evaluation_modes
             )
             seeds = seed_plan["eval_seed_set"][:episode_count]
             results: dict[str, Any] = {}
@@ -1849,6 +1869,7 @@ def main(cfg: Any) -> None:
                 actual_primitive_env_steps=counters.actual_primitive_env_steps,
                 episode_count=int(cfg.p6.online_eval_episodes),
                 artifact_label=f"online_{chunk:012d}",
+                evaluation_modes=online_evaluation_modes,
             )
 
         manager = P6CheckpointManager(

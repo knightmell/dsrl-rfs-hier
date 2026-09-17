@@ -128,7 +128,10 @@ p6:
   online_eval_interval_chunk_transitions: 100000
   model_checkpoint_interval_chunk_transitions: 100000
   replay_checkpoint_interval_chunk_transitions: 100000
-  online_eval_episodes: 10
+  # Six curve nodes: 0, 100k, ..., 500k. Square uses 100 DDIM steps, so a
+  # denser 100-episode cadence would disproportionately dominate wall clock.
+  online_eval_episodes: 100
+  online_evaluation_modes: [current_full_hierarchy]
   final_eval_episodes: 100
   evaluation_batch_size: 1
   diagnostics_interval_updates: 100

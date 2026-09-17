@@ -8,3 +8,4 @@ logdir: ${log_dir}/p6/${name}
 
 p6:
   algorithm_label: dsrl_na_control
+  online_evaluation_modes: [current_base_only]

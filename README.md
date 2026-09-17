@@ -255,9 +255,10 @@ K=4 teacher 查询最慢，首个 400-chunk 块需要数分钟，不应仅因这
 
 加速的目标是缓解 CPU / host-memory 瓶颈，不是改变算法。`+runtime=fast` 只适合
 **新的 VS-Hier run**，其当前效果是：关闭重复的热路径 contract 检查，将 K=4、
-B=256 的 QW teacher microbatch 合并到最多 1024 行，并降低在线评估、模型检查点和
-replay bundle 的写入频率。K、query 数、UTD、优化器步数、replay/RNG 和 residual
-组合语义不变。严格诊断时仍使用默认 strict 模式。
+B=256 的 QW teacher microbatch 合并到最多 1024 行。检查点与评估频率由各任务 YAML
+明确控制，`runtime/fast` 不会覆盖它们：这些频率决定学习曲线的证据密度，而不是可
+随意删减的运行时开销。K、query 数、UTD、优化器步数、replay/RNG 和 residual 组合
+语义不变。严格诊断时仍使用默认 strict 模式。
 
 例如，新建一个明确命名的 Hopper full run：
 

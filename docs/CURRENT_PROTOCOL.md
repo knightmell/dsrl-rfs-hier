@@ -65,8 +65,8 @@ it changes only runtime overhead:
 
 - skips redundant per-update gradient-isolation and executed-action rechecks;
 - uses a QW teacher microbatch ceiling of 1024 rows (one batch for K=4, B=256);
-- writes online evaluations/model checkpoints every 100k chunks and replay
-  bundles every 200k chunks.
+- leaves checkpoint and evaluation cadence unchanged from the selected task
+  configuration.
 
 Strict mode remains the default and must be used for diagnosis whose purpose is
 to validate those per-update checks. Do not apply this overlay to a process
@@ -91,6 +91,28 @@ The default evaluation policy is intentionally lightweight:
 The detailed operational instructions live in
 `/home/mrf/.agents/skills/running-research-evaluation/SKILL.md`. A different
 final budget or an evaluation before 500k requires an explicit user request.
+
+### Manipulation benchmark learning curves
+
+For new Robomimic/D3IL runs, each saved curve checkpoint is evaluated on 100
+fixed-seed episodes and has a matching model snapshot and resume bundle. The
+cadence is task-specific and belongs in the task YAML, not in a runtime overlay:
+
+| Task | Curve milestones (chunk transitions) | Rationale |
+|---|---|---|
+| Can | 0, 50k, 100k, 150k, 200k, 250k, 300k | Seven points across the 300k initial budget. |
+| Square | 0, 100k, 200k, 300k, 400k, 500k | Square's 100-step DDIM evaluation makes a denser cadence disproportionately costly. |
+| Avoid-M1 | 0, 25k, 50k, 75k, 100k | Five points expose fast saturation in the short 100k budget. |
+
+This policy applies to future launches only. A completed run cannot recover an
+unwritten intermediate model; its existing short evaluation remains historical
+evidence and must not be relabeled as a 100-episode checkpoint.
+
+At intermediate VS-Hier curve nodes, evaluate `current_full_hierarchy` only;
+at matched DSRL nodes, evaluate `current_base_only` only. This makes each
+plotted method point exactly 100 episodes rather than silently spending 300
+episodes on full/base/reference diagnostic views. The final checkpoint retains
+all views for mechanism analysis.
 
 ## Budget accounting across methods
 
